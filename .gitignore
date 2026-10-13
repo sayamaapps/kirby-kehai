@@ -1,4 +1,6 @@
 /vendor/
+/kirby/
+/composer.lock
 /node_modules/
-.DS_Store
 /storage/
+.DS_Store

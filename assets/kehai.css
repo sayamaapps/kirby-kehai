@@ -1,0 +1,92 @@
+/*!
+ * Kehai — the bubble. https://github.com/simsimmal/kirby-kehai
+ *
+ * Fixed to a corner, so it never moves the page (no layout shift). Empty
+ * and invisible until the script adds .kehai-open. Colours and spacing are
+ * custom properties; a site overrides them in its own stylesheet, or sets
+ * `kehai.css` to false and styles .kehai itself.
+ */
+.kehai {
+  --kehai-background: #fff;
+  --kehai-color: #222;
+  --kehai-border: rgba(0, 0, 0, .12);
+  --kehai-shadow: 0 .5rem 1.5rem rgba(0, 0, 0, .15);
+  --kehai-radius: .75rem;
+  --kehai-offset: 1rem;
+  --kehai-font-size: .9375rem;
+
+  position: fixed;
+  bottom: var(--kehai-offset);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  gap: .5rem;
+  box-sizing: border-box;
+  max-width: min(22rem, calc(100vw - 2 * var(--kehai-offset)));
+  font-size: var(--kehai-font-size);
+  line-height: 1.4;
+  color: var(--kehai-color);
+  opacity: 0;
+  transform: translateY(.5rem);
+  pointer-events: none;
+  transition: opacity .3s ease, transform .3s ease;
+}
+
+.kehai-left {
+  left: var(--kehai-offset);
+}
+
+.kehai-right {
+  right: var(--kehai-offset);
+}
+
+.kehai.kehai-open {
+  padding: .75rem .75rem .75rem 1rem;
+  background: var(--kehai-background);
+  border: 1px solid var(--kehai-border);
+  border-radius: var(--kehai-radius);
+  box-shadow: var(--kehai-shadow);
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.kehai-text {
+  margin: 0;
+}
+
+.kehai-close {
+  flex: none;
+  margin: -.25rem -.25rem 0 0;
+  padding: .25rem .5rem;
+  font: inherit;
+  font-size: 1.25em;
+  line-height: 1;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: .25rem;
+  cursor: pointer;
+}
+
+.kehai-close[hidden] {
+  display: none;
+}
+
+.kehai-close:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kehai {
+    transform: none;
+    transition: none;
+  }
+}
+
+@media print {
+  .kehai {
+    display: none;
+  }
+}

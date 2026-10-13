@@ -1,0 +1,523 @@
+{
+    "api_version": "1.2",
+    "current_time": "2026-10-13 12:00:00",
+    "result": "success",
+    "data": {
+        "page_no": 1,
+        "page_size": 500,
+        "purchase_list": [
+            {
+                "id": "AB12CD34",
+                "created_at": "2026-10-13 09:41:37",
+                "main_product_id": "111111",
+                "main_product_name": "Jahreskurs Gruppe",
+                "vendor_name": "kehaitestvendor",
+                "vat_country": "AT",
+                "currency": "EUR",
+                "amount": "97.00",
+                "vat_amount": "16.17",
+                "affiliate_name": "aff_kehaitest",
+                "affiliate_amount": "29.10",
+                "campaignkey": "cmp-secret-77",
+                "trackingkey": "trk-secret-88",
+                "click_id": "clk-0042",
+                "billing_type": "single_payment",
+                "billing_status": "completed",
+                "transaction_type": "payment",
+                "is_canceled_now": "N",
+                "pay_method": "creditcard",
+                "items": [
+                    {
+                        "product_id": "111111",
+                        "product_name": "Jahreskurs Gruppe",
+                        "quantity": 1,
+                        "amount": "97.00"
+                    }
+                ],
+                "buyer": {
+                    "first_name": "Annegret",
+                    "last_name": "Beispielhuber",
+                    "email": "annegret.beispielhuber@example.org",
+                    "street": "Musterweg 12",
+                    "zipcode": "1010",
+                    "city": "Wien",
+                    "phone_no": "+43 660 1234567",
+                    "id": "B-77001"
+                }
+            },
+            {
+                "vat_country": "DE",
+                "billing_type": "installment",
+                "billing_status": "paying",
+                "pay_sequence_no": 1,
+                "number_of_installments": 3,
+                "buyer": {
+                    "first_name": "Bertram",
+                    "last_name": "Quellenhof",
+                    "email": "b.quellenhof@example.net",
+                    "street": "Musterweg 12",
+                    "zipcode": "1010",
+                    "city": "Wien",
+                    "phone_no": "+43 660 1234567",
+                    "id": "B-77001"
+                },
+                "id": "EF56GH78",
+                "created_at": "2026-10-12 18:05:59",
+                "main_product_id": "111111",
+                "main_product_name": "Jahreskurs Gruppe",
+                "vendor_name": "kehaitestvendor",
+                "currency": "EUR",
+                "amount": "97.00",
+                "vat_amount": "16.17",
+                "affiliate_name": "aff_kehaitest",
+                "affiliate_amount": "29.10",
+                "campaignkey": "cmp-secret-77",
+                "trackingkey": "trk-secret-88",
+                "click_id": "clk-0042",
+                "transaction_type": "payment",
+                "is_canceled_now": "N",
+                "pay_method": "creditcard",
+                "items": [
+                    {
+                        "product_id": "111111",
+                        "product_name": "Jahreskurs Gruppe",
+                        "quantity": 1,
+                        "amount": "97.00"
+                    }
+                ]
+            },
+            {
+                "billing_type": "installment",
+                "billing_status": "paying",
+                "pay_sequence_no": 3,
+                "last_payment_at": "2026-10-12 08:00:00",
+                "buyer": {
+                    "first_name": "Cordula",
+                    "last_name": "Ratenreich",
+                    "email": "cordula@example.com",
+                    "street": "Musterweg 12",
+                    "zipcode": "1010",
+                    "city": "Wien",
+                    "phone_no": "+43 660 1234567",
+                    "id": "B-77001"
+                },
+                "id": "IJ90KL12",
+                "created_at": "2026-08-01 10:00:00",
+                "main_product_id": "111111",
+                "main_product_name": "Jahreskurs Gruppe",
+                "vendor_name": "kehaitestvendor",
+                "vat_country": "AT",
+                "currency": "EUR",
+                "amount": "97.00",
+                "vat_amount": "16.17",
+                "affiliate_name": "aff_kehaitest",
+                "affiliate_amount": "29.10",
+                "campaignkey": "cmp-secret-77",
+                "trackingkey": "trk-secret-88",
+                "click_id": "clk-0042",
+                "transaction_type": "payment",
+                "is_canceled_now": "N",
+                "pay_method": "creditcard",
+                "items": [
+                    {
+                        "product_id": "111111",
+                        "product_name": "Jahreskurs Gruppe",
+                        "quantity": 1,
+                        "amount": "97.00"
+                    }
+                ]
+            },
+            {
+                "transaction_type": "refund",
+                "buyer": {
+                    "first_name": "Dietmar",
+                    "last_name": "Rueckgabe",
+                    "email": "dietmar@example.com",
+                    "street": "Musterweg 12",
+                    "zipcode": "1010",
+                    "city": "Wien",
+                    "phone_no": "+43 660 1234567",
+                    "id": "B-77001"
+                },
+                "id": "MN34OP56",
+                "created_at": "2026-10-11 12:00:00",
+                "main_product_id": "111111",
+                "main_product_name": "Jahreskurs Gruppe",
+                "vendor_name": "kehaitestvendor",
+                "vat_country": "AT",
+                "currency": "EUR",
+                "amount": "97.00",
+                "vat_amount": "16.17",
+                "affiliate_name": "aff_kehaitest",
+                "affiliate_amount": "29.10",
+                "campaignkey": "cmp-secret-77",
+                "trackingkey": "trk-secret-88",
+                "click_id": "clk-0042",
+                "billing_type": "single_payment",
+                "billing_status": "completed",
+                "is_canceled_now": "N",
+                "pay_method": "creditcard",
+                "items": [
+                    {
+                        "product_id": "111111",
+                        "product_name": "Jahreskurs Gruppe",
+                        "quantity": 1,
+                        "amount": "97.00"
+                    }
+                ]
+            },
+            {
+                "transaction_type": "chargeback",
+                "buyer": {
+                    "first_name": "Edeltraud",
+                    "last_name": "Lastschrift",
+                    "email": "edeltraud@example.com",
+                    "street": "Musterweg 12",
+                    "zipcode": "1010",
+                    "city": "Wien",
+                    "phone_no": "+43 660 1234567",
+                    "id": "B-77001"
+                },
+                "id": "QR78ST90",
+                "created_at": "2026-10-11 13:00:00",
+                "main_product_id": "111111",
+                "main_product_name": "Jahreskurs Gruppe",
+                "vendor_name": "kehaitestvendor",
+                "vat_country": "AT",
+                "currency": "EUR",
+                "amount": "97.00",
+                "vat_amount": "16.17",
+                "affiliate_name": "aff_kehaitest",
+                "affiliate_amount": "29.10",
+                "campaignkey": "cmp-secret-77",
+                "trackingkey": "trk-secret-88",
+                "click_id": "clk-0042",
+                "billing_type": "single_payment",
+                "billing_status": "completed",
+                "is_canceled_now": "N",
+                "pay_method": "creditcard",
+                "items": [
+                    {
+                        "product_id": "111111",
+                        "product_name": "Jahreskurs Gruppe",
+                        "quantity": 1,
+                        "amount": "97.00"
+                    }
+                ]
+            },
+            {
+                "billing_type": "subscription",
+                "billing_status": "paying",
+                "is_canceled_now": "Y",
+                "buyer": {
+                    "first_name": "Friedhelm",
+                    "last_name": "Storno",
+                    "email": "friedhelm@example.com",
+                    "street": "Musterweg 12",
+                    "zipcode": "1010",
+                    "city": "Wien",
+                    "phone_no": "+43 660 1234567",
+                    "id": "B-77001"
+                },
+                "id": "UV12WX34",
+                "created_at": "2026-10-11 14:00:00",
+                "main_product_id": "111111",
+                "main_product_name": "Jahreskurs Gruppe",
+                "vendor_name": "kehaitestvendor",
+                "vat_country": "AT",
+                "currency": "EUR",
+                "amount": "97.00",
+                "vat_amount": "16.17",
+                "affiliate_name": "aff_kehaitest",
+                "affiliate_amount": "29.10",
+                "campaignkey": "cmp-secret-77",
+                "trackingkey": "trk-secret-88",
+                "click_id": "clk-0042",
+                "transaction_type": "payment",
+                "pay_method": "creditcard",
+                "items": [
+                    {
+                        "product_id": "111111",
+                        "product_name": "Jahreskurs Gruppe",
+                        "quantity": 1,
+                        "amount": "97.00"
+                    }
+                ]
+            },
+            {
+                "billing_type": "installment",
+                "billing_status": "aborted",
+                "buyer": {
+                    "first_name": "Gisela",
+                    "last_name": "Abbruch",
+                    "email": "gisela@example.com",
+                    "street": "Musterweg 12",
+                    "zipcode": "1010",
+                    "city": "Wien",
+                    "phone_no": "+43 660 1234567",
+                    "id": "B-77001"
+                },
+                "id": "YZ56AB78",
+                "created_at": "2026-10-11 15:00:00",
+                "main_product_id": "111111",
+                "main_product_name": "Jahreskurs Gruppe",
+                "vendor_name": "kehaitestvendor",
+                "vat_country": "AT",
+                "currency": "EUR",
+                "amount": "97.00",
+                "vat_amount": "16.17",
+                "affiliate_name": "aff_kehaitest",
+                "affiliate_amount": "29.10",
+                "campaignkey": "cmp-secret-77",
+                "trackingkey": "trk-secret-88",
+                "click_id": "clk-0042",
+                "transaction_type": "payment",
+                "is_canceled_now": "N",
+                "pay_method": "creditcard",
+                "items": [
+                    {
+                        "product_id": "111111",
+                        "product_name": "Jahreskurs Gruppe",
+                        "quantity": 1,
+                        "amount": "97.00"
+                    }
+                ]
+            },
+            {
+                "billing_status": "unpaid",
+                "buyer": {
+                    "first_name": "Hartmut",
+                    "last_name": "Offen",
+                    "email": "hartmut@example.com",
+                    "street": "Musterweg 12",
+                    "zipcode": "1010",
+                    "city": "Wien",
+                    "phone_no": "+43 660 1234567",
+                    "id": "B-77001"
+                },
+                "id": "CD90EF12",
+                "created_at": "2026-10-11 16:00:00",
+                "main_product_id": "111111",
+                "main_product_name": "Jahreskurs Gruppe",
+                "vendor_name": "kehaitestvendor",
+                "vat_country": "AT",
+                "currency": "EUR",
+                "amount": "97.00",
+                "vat_amount": "16.17",
+                "affiliate_name": "aff_kehaitest",
+                "affiliate_amount": "29.10",
+                "campaignkey": "cmp-secret-77",
+                "trackingkey": "trk-secret-88",
+                "click_id": "clk-0042",
+                "billing_type": "single_payment",
+                "transaction_type": "payment",
+                "is_canceled_now": "N",
+                "pay_method": "creditcard",
+                "items": [
+                    {
+                        "product_id": "111111",
+                        "product_name": "Jahreskurs Gruppe",
+                        "quantity": 1,
+                        "amount": "97.00"
+                    }
+                ]
+            },
+            {
+                "is_test_order": "Y",
+                "buyer": {
+                    "first_name": "Ingeborg",
+                    "last_name": "Testkauf",
+                    "email": "ingeborg@example.com",
+                    "street": "Musterweg 12",
+                    "zipcode": "1010",
+                    "city": "Wien",
+                    "phone_no": "+43 660 1234567",
+                    "id": "B-77001"
+                },
+                "id": "GH34IJ56",
+                "created_at": "2026-10-11 17:00:00",
+                "main_product_id": "111111",
+                "main_product_name": "Jahreskurs Gruppe",
+                "vendor_name": "kehaitestvendor",
+                "vat_country": "AT",
+                "currency": "EUR",
+                "amount": "97.00",
+                "vat_amount": "16.17",
+                "affiliate_name": "aff_kehaitest",
+                "affiliate_amount": "29.10",
+                "campaignkey": "cmp-secret-77",
+                "trackingkey": "trk-secret-88",
+                "click_id": "clk-0042",
+                "billing_type": "single_payment",
+                "billing_status": "completed",
+                "transaction_type": "payment",
+                "is_canceled_now": "N",
+                "pay_method": "creditcard",
+                "items": [
+                    {
+                        "product_id": "111111",
+                        "product_name": "Jahreskurs Gruppe",
+                        "quantity": 1,
+                        "amount": "97.00"
+                    }
+                ]
+            },
+            {
+                "buyer": {
+                    "first_name": "Joachim",
+                    "last_name": "Fremd",
+                    "email": "joachim@example.com",
+                    "street": "Musterweg 12",
+                    "zipcode": "1010",
+                    "city": "Wien",
+                    "phone_no": "+43 660 1234567",
+                    "id": "B-77001"
+                },
+                "id": "KL78MN90",
+                "created_at": "2026-10-11 18:00:00",
+                "main_product_id": "999999",
+                "main_product_name": "Fremdes Produkt",
+                "vendor_name": "kehaitestvendor",
+                "vat_country": "AT",
+                "currency": "EUR",
+                "amount": "97.00",
+                "vat_amount": "16.17",
+                "affiliate_name": "aff_kehaitest",
+                "affiliate_amount": "29.10",
+                "campaignkey": "cmp-secret-77",
+                "trackingkey": "trk-secret-88",
+                "click_id": "clk-0042",
+                "billing_type": "single_payment",
+                "billing_status": "completed",
+                "transaction_type": "payment",
+                "is_canceled_now": "N",
+                "pay_method": "creditcard",
+                "items": [
+                    {
+                        "product_id": "999999",
+                        "product_name": "Jahreskurs Gruppe",
+                        "quantity": 1,
+                        "amount": "97.00"
+                    }
+                ]
+            },
+            {
+                "vat_country": "CH",
+                "main_product_name": "Wochenendkurs",
+                "buyer": {
+                    "first_name": "Klothilde",
+                    "last_name": "Sternberg",
+                    "email": "klothilde@example.com",
+                    "street": "Musterweg 12",
+                    "zipcode": "1010",
+                    "city": "Wien",
+                    "phone_no": "+43 660 1234567",
+                    "id": "B-77001"
+                },
+                "id": "OP12QR34",
+                "created_at": "2026-10-10 07:30:15",
+                "main_product_id": "222222",
+                "vendor_name": "kehaitestvendor",
+                "currency": "EUR",
+                "amount": "97.00",
+                "vat_amount": "16.17",
+                "affiliate_name": "aff_kehaitest",
+                "affiliate_amount": "29.10",
+                "campaignkey": "cmp-secret-77",
+                "trackingkey": "trk-secret-88",
+                "click_id": "clk-0042",
+                "billing_type": "single_payment",
+                "billing_status": "completed",
+                "transaction_type": "payment",
+                "is_canceled_now": "N",
+                "pay_method": "creditcard",
+                "items": [
+                    {
+                        "product_id": "222222",
+                        "product_name": "Jahreskurs Gruppe",
+                        "quantity": 1,
+                        "amount": "97.00"
+                    }
+                ]
+            },
+            {
+                "id": "AB12CD34",
+                "created_at": "2026-10-13 09:41:37",
+                "main_product_id": "111111",
+                "main_product_name": "Jahreskurs Gruppe",
+                "vendor_name": "kehaitestvendor",
+                "vat_country": "AT",
+                "currency": "EUR",
+                "amount": "97.00",
+                "vat_amount": "16.17",
+                "affiliate_name": "aff_kehaitest",
+                "affiliate_amount": "29.10",
+                "campaignkey": "cmp-secret-77",
+                "trackingkey": "trk-secret-88",
+                "click_id": "clk-0042",
+                "billing_type": "single_payment",
+                "billing_status": "completed",
+                "transaction_type": "payment",
+                "is_canceled_now": "N",
+                "pay_method": "creditcard",
+                "items": [
+                    {
+                        "product_id": "111111",
+                        "product_name": "Jahreskurs Gruppe",
+                        "quantity": 1,
+                        "amount": "97.00"
+                    }
+                ],
+                "buyer": {
+                    "first_name": "Annegret",
+                    "last_name": "Beispielhuber",
+                    "email": "annegret.beispielhuber@example.org",
+                    "street": "Musterweg 12",
+                    "zipcode": "1010",
+                    "city": "Wien",
+                    "phone_no": "+43 660 1234567",
+                    "id": "B-77001"
+                }
+            },
+            {
+                "vat_country": "nl",
+                "billing_type": "installment",
+                "billing_status": "paying",
+                "buyer": {
+                    "first_name": "Leopold",
+                    "last_name": "Ratenplan",
+                    "email": "leopold@example.com",
+                    "street": "Musterweg 12",
+                    "zipcode": "1010",
+                    "city": "Wien",
+                    "phone_no": "+43 660 1234567",
+                    "id": "B-77001"
+                },
+                "id": "ST56UV78",
+                "created_at": "2026-10-09 20:00:00",
+                "main_product_id": "111112",
+                "main_product_name": "Jahreskurs Gruppe",
+                "vendor_name": "kehaitestvendor",
+                "currency": "EUR",
+                "amount": "97.00",
+                "vat_amount": "16.17",
+                "affiliate_name": "aff_kehaitest",
+                "affiliate_amount": "29.10",
+                "campaignkey": "cmp-secret-77",
+                "trackingkey": "trk-secret-88",
+                "click_id": "clk-0042",
+                "transaction_type": "payment",
+                "is_canceled_now": "N",
+                "pay_method": "creditcard",
+                "items": [
+                    {
+                        "product_id": "111112",
+                        "product_name": "Jahreskurs Gruppe",
+                        "quantity": 1,
+                        "amount": "97.00"
+                    }
+                ]
+            }
+        ]
+    }
+}

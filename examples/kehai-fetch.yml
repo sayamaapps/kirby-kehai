@@ -1,0 +1,82 @@
+# Kehai: fetch the anonymous data file every hour and upload only that file.
+#
+# Copy to .github/workflows/kehai-fetch.yml in the SITE's repository and
+# replace every value marked ←. The API key stays a repository secret: it is
+# used here, on the runner, and never reaches the web server.
+#
+# Secrets (Settings → Secrets and variables → Actions):
+#   DIGISTORE24_API_KEY   Digistore24 API key, read-only access is enough   ←
+#   KEHAI_FTP_HOST        e.g. ftp.example.com                              ←
+#   KEHAI_FTP_USER                                                          ←
+#   KEHAI_FTP_PASSWORD                                                      ←
+#
+# The site's configuration (kehai.products and the rest) is read from
+# site/config/config.php of the checkout, so the workflow needs no list of
+# products of its own.
+
+name: Kehai fetch
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 * * * *'   # every hour at :23, off the full hour
+
+permissions:
+  contents: read
+
+concurrency: kehai-fetch
+
+env:
+  KEHAI_FILE: build/kehai/events.json             # on the runner only, never committed
+  KEHAI_REMOTE_DIR: /htdocs/example/storage/kehai # ← project root on the server + storage/kehai (kehai.file)
+
+jobs:
+  fetch:
+    runs-on: [self-hosted, studio-linux]   # ← your own runner (or ubuntu-latest)
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, curl
+          coverage: none
+
+      - name: Install the site's packages (Kirby and Kehai)
+        run: composer install --no-dev --no-interaction --no-progress --prefer-dist
+
+      - name: Fetch purchases, write the anonymous file
+        id: fetch
+        env:
+          DIGISTORE24_API_KEY: ${{ secrets.DIGISTORE24_API_KEY }}
+        run: |
+          set +e
+          vendor/bin/kehai fetch --file="$KEHAI_FILE"
+          status=$?
+          set -e
+          if [ "$status" = "3" ]; then
+            echo "::notice::No DIGISTORE24_API_KEY stored — nothing fetched, nothing uploaded."
+            echo "upload=no" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # 1 = error: the file on the server stays as it is. After kehai.maxStale
+          # hours (48) without a successful run the site shows nothing by itself.
+          [ "$status" = "0" ] || exit "$status"
+          echo "upload=yes" >> "$GITHUB_OUTPUT"
+
+      - name: Upload only the data file
+        if: steps.fetch.outputs.upload == 'yes'
+        env:
+          FTP_HOST: ${{ secrets.KEHAI_FTP_HOST }}
+          FTP_USER: ${{ secrets.KEHAI_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.KEHAI_FTP_PASSWORD }}
+        # Placeholder for your deploy. Uploads under a temporary name and then
+        # renames, so the site never reads half a file. Some servers refuse to
+        # rename over an existing file; then add `rm -f events.json;` before `mv`.
+        run: |
+          lftp -c "set ftp:ssl-force true; set ssl:verify-certificate yes; \
+            open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\"; \
+            mkdir -p -f \"$KEHAI_REMOTE_DIR\"; cd \"$KEHAI_REMOTE_DIR\"; \
+            put \"$KEHAI_FILE\" -o events.json.upload; \
+            mv events.json.upload events.json"

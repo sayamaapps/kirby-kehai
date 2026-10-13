@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: PHP ${{ matrix.php }}
+    # Private repository: runs on our own runner, not on GitHub-hosted machines.
+    runs-on: [self-hosted, studio-linux]
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3', '8.4']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, curl
+          coverage: none
+
+      - name: Install dev dependencies (Kirby as fixture)
+        run: composer install --no-interaction --no-progress --prefer-dist --ignore-platform-req=ext-gd
+
+      - name: Tests
+        run: sh tests/run.sh
+
+      - name: The CLI outside a site says so (exit 2) and never needs a key for that
+        run: |
+          set +e
+          bin/kehai check
+          status=$?
+          set -e
+          [ "$status" = "2" ] || { echo "::error::expected exit 2 without a site, got $status"; exit 1; }
+
+  script:
+    name: kehai.js
+    runs-on: [self-hosted, studio-linux]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Behaviour (fake DOM, no dependencies)
+        run: node --test tests/*.test.mjs
+
+      - name: Syntax check, no storage, no cookies, no inline style, no foreign host
+        run: |
+          node --check assets/kehai.js
+          if grep -nE 'localStorage|sessionStorage|document\.cookie|indexedDB|\.style\b|innerHTML' assets/kehai.js; then
+            echo "::error::kehai.js must not store anything, set inline styles or inject HTML"; exit 1
+          fi
+          if grep -nPi 'https?://(?!github\.com/simsimmal)' assets/kehai.js assets/kehai.css; then
+            echo "::error::kehai.js and kehai.css must not name any address except the project page"; exit 1
+          fi

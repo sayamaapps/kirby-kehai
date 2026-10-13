@@ -1,0 +1,19 @@
+#!/usr/bin/env php
+<?php
+/**
+ * Kehai on the command line, from the project root:
+ *
+ *   DIGISTORE24_API_KEY=… vendor/bin/kehai fetch   # source → anonymous data file
+ *   vendor/bin/kehai check                         # configuration, file, events per product
+ *
+ * Manual installation: php site/plugins/kehai/bin/kehai …
+ * Details in src/Cli.php and the README ("Operation").
+ */
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    exit;
+}
+
+require_once dirname(__DIR__) . '/src/autoload.php';
+
+exit(Kehai\Cli::main(getenv(), $argv, (string) getcwd(), STDOUT, STDERR));

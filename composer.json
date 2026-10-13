@@ -1,0 +1,49 @@
+{
+    "name": "sayamaapps/kirby-kehai",
+    "description": "Honest social proof for Kirby CMS: real, recent purchases (Digistore24) as a small notice or a summary line, served from your own server. No third-party request when the page loads, no personal data, no cookies, no inline script.",
+    "type": "kirby-plugin",
+    "license": "MIT",
+    "keywords": ["kirby", "kirby-plugin", "kirby-5", "social-proof", "digistore24", "privacy", "gdpr", "csp"],
+    "homepage": "https://github.com/simsimmal/kirby-kehai",
+    "authors": [
+        {
+            "name": "Simon Räder",
+            "homepage": "https://sayamaapps.de"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/simsimmal/kirby-kehai/issues",
+        "source": "https://github.com/simsimmal/kirby-kehai"
+    },
+    "require": {
+        "php": "^8.2",
+        "ext-json": "*",
+        "ext-mbstring": "*",
+        "getkirby/composer-installer": "^1.2"
+    },
+    "require-dev": {
+        "getkirby/cms": "^5.0"
+    },
+    "bin": [
+        "bin/kehai"
+    ],
+    "scripts": {
+        "test": "sh tests/run.sh"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "allow-plugins": {
+            "getkirby/composer-installer": true
+        },
+        "platform": {
+            "php": "8.2.0"
+        }
+    },
+    "extra": {
+        "installer-name": "kehai",
+        "kirby-cms-path": false,
+        "kirby": {
+            "compatible": "^5.0"
+        }
+    }
+}
