@@ -33,7 +33,7 @@ try {
     expect(['type' => 'purchase', 'product' => 'jahreskurs', 'at' => '2026-10-13T07:41:00Z', 'country' => 'AT'], Events::clean($full, true), 'clean: plus country when on');
     foreach ([
         'unknown type' => ['type' => 'refund'],
-        'product with a space' => ['product' => 'Licht kreis'],
+        'product with a space' => ['product' => 'Jahres kurs'],
         'product with markup' => ['product' => '<b>x</b>'],
         'time with seconds' => ['at' => '2026-10-13T07:41:37Z'],
         'time without zone' => ['at' => '2026-10-13T07:41:00'],

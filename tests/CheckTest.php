@@ -81,7 +81,7 @@ try {
     // ---- No control characters, whatever the configuration and the file say ---------------
     $evil = testConfig($tmp, [
         'file' => "storage/kehai/ev\x1b]0;owned\x07ents.json",
-        'products' => ['111111' => ['key' => 'jahreskurs', 'label' => ['de' => "Licht\x1b[2J\x1b[31mkreis\u{202e}", 'en' => "a\rb\nc"]]],
+        'products' => ['111111' => ['key' => 'jahreskurs', 'label' => ['de' => "Jahres\x1b[2J\x1b[31mkurs\u{202e}", 'en' => "a\rb\nc"]]],
         'groups' => ['g' => ['products' => ['jahreskurs', "x\x1b[1m"], 'label' => "\x9b31m"]],
         'bubble' => true,
     ]);
@@ -101,7 +101,7 @@ try {
     mkdir($site . '/public', 0700, true);
     file_put_contents($site . '/site/config/config.php', '<?php return ' . var_export(['kehai' => [
         'active' => true, 'bubble' => true,
-        'products' => ['111111' => ['key' => 'jahreskurs', 'label' => "Licht\x1b[31mkreis"]],
+        'products' => ['111111' => ['key' => 'jahreskurs', 'label' => "Jahres\x1b[31mkurs"]],
     ]], true) . ';');
     $cli = fn (array $argv, array $env = []) => captured(fn ($out, $err) => Cli::main($env, $argv, $site, $out, $err));
 
