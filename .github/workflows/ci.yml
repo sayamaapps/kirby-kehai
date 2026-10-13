@@ -10,8 +10,7 @@ permissions:
 jobs:
   tests:
     name: PHP ${{ matrix.php }}
-    # Private repository: runs on our own runner, not on GitHub-hosted machines.
-    runs-on: [self-hosted, studio-linux]
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -41,7 +40,7 @@ jobs:
 
   script:
     name: kehai.js
-    runs-on: [self-hosted, studio-linux]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 

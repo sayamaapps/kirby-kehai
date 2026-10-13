@@ -17,7 +17,7 @@ All notable changes to this project are documented here. Versions follow
   **[privacy text]**. Every site using the plugin must then review its privacy
   policy.
 
-## [1.0.0] — unreleased
+## [1.0.0] — 2026-10-13
 
 First release. Replaces the Digistore24 "Social Proof Bubble" on client sites:
 no script from digistore24.com, no first names, no towns.
@@ -62,7 +62,7 @@ no script from digistore24.com, no first names, no towns.
   (Shoji's pattern), also registered as Kirby translations (`kehai.*`).
 - `examples/kehai-fetch.yml`: hourly GitHub Actions workflow that uploads only
   the data file.
-- CI on PHP 8.2–8.4 and Node 22, on the self-hosted runner.
+- CI on PHP 8.2–8.4 and Node 22.
 
 ### [privacy text]
 
