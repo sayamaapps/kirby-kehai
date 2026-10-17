@@ -130,7 +130,7 @@ The site then fetches by itself:
 - one fetch at a time (an exclusive, non-blocking lock in `storage/kehai/`);
 - with a time limit of 5 seconds;
 - on any error the last good file stays and the error log gets one line;
-- **never while a visitor waits.** The fetch is started from the `/kehai/events.json` route, which the bubble's script loads in the background, and it runs after the answer has been handed over. On PHP-FPM (and LiteSpeed) a page render can start it as well, after `fastcgi_finish_request()`; elsewhere only the route does, since the visitor would wait otherwise. A site that uses only the summary should therefore run on PHP-FPM or use the workflow.
+- **never while a visitor waits.** The fetch is started from the `/kehai/events.json` route, which the bubble's script loads in the background, and it runs after the answer has been handed over. On PHP-FPM (and LiteSpeed) a page render can start it as well, after `fastcgi_finish_request()`; elsewhere only the route does, since the visitor would wait otherwise. In pull mode the bubble's snippet prints its container and script even while there is nothing to show, so that the route is called and the fetch can start again after a quiet spell or an outage; the visitor sees nothing until there is an event. A site that uses only the summary should therefore run on PHP-FPM or use the workflow.
 
 The key is then on the web server, in a PHP file that is never served. The workflow avoids that and is the recommended setup.
 
@@ -203,7 +203,7 @@ Invalid values fall back to the default; the reason is written to the error log 
 <?php snippet('kehai/bubble', ['products' => ['jahreskurs']]) ?>   // only these product keys, e.g. on the offer's page
 ```
 
-Prints nothing unless Kehai and the bubble are on and there is a real event to show. Otherwise:
+Prints nothing unless Kehai and the bubble are on and there is a real event to show (in pull mode the markup below is printed even without one, so the script can call the route). Otherwise:
 
 ```html
 <link rel="stylesheet" href="/media/plugins/sayamaapps/kehai/…/kehai.css">
@@ -224,7 +224,7 @@ The container is fixed to a corner and empty until the script fills it, so it ne
  "events": [{"text": "Jemand aus Österreich hat „Jahreskurs“ gebucht", "at": "2026-10-13T07:41:00Z"}]}
 ```
 
-Own markup: create `site/snippets/kehai/bubble.php` (Kirby takes it first) and keep the container's data attributes and the two child elements; `$site->kehaiBubble()` says whether there is anything to show.
+Own markup: create `site/snippets/kehai/bubble.php` (Kirby takes it first) and keep the container's data attributes and the two child elements; `$site->kehaiBubble()` says whether to print it (an event to show, or pull mode, which needs the script to call the route).
 
 ### Summary
 

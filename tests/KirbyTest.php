@@ -200,6 +200,28 @@ try {
     holds(!str_contains(file_get_contents($file), 'Annegret'), 'pull mode: the file is anonymous');
     [$response] = $route($pull);
     holds(!Pull::pending(), 'pull mode: not due again right after');
+    // Pull mode prints the bubble even with nothing to show: its script's call of the route is what restarts the fetch.
+    $printed = fn (string $html) => str_contains($html, '<div class="kehai') && str_contains($html, 'data-kehai-src=')
+        && (bool) preg_match('~<script src="http://example\.invalid/[^"]*kehai\.js[^"]*" defer></script>~', $html);
+    $kept = file_get_contents($file);
+    $requests = count($calls);
+    $emptyStates = [
+        'file missing' => [fn () => unlink($file), fn () => file_put_contents($file, $kept)],
+        'file stale' => [fn () => $writeFile([['type' => 'purchase', 'product' => 'jahreskurs', 'at' => $minute('-1 hour')]], '-49 hours'), fn () => file_put_contents($file, $kept)],
+    ];
+    foreach ($emptyStates as $state => [$set, $restore]) {
+        $set();
+        [$html] = $page($pull);
+        holds($printed($html) && $noInlineScript($html), "pull mode, $state: the bubble's container and script are still printed");
+        expect($requests, count($calls), "pull mode, $state: the page render still makes no request");
+        $restore();
+    }
+    holds($printed((string) $kirby($pull)->snippet('kehai/bubble', ['products' => ['nope']], true)), 'pull mode, no event of these products: container and script are printed');
+    expect('', trim((string) $kirby(array_replace($pull, ['kehai.active' => false]))->snippet('kehai/bubble', [], true)), 'pull mode, kehai.active off: nothing printed');
+    [$html] = $page(array_replace($pull, ['kehai.bubble' => false, 'kehai.summary' => false]));
+    holds(!str_contains($html, 'kehai'), 'pull mode, kehai.bubble off: no Kehai markup');
+    expect(false, $kirby(array_replace($pull, ['kehai.bubble' => false]))->site()->kehaiBubble(), 'pull mode, kehai.bubble off: kehaiBubble() is false');
+    expect('', trim((string) $kirby($on)->snippet('kehai/bubble', ['products' => ['nope']], true)), 'pull mode off, no event of these products: still nothing printed');
     unlink($tmp . '/site/config/kehai.php');
     @unlink(Pull::marker($file));
     [, , $log] = $route($pull);

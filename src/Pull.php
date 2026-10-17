@@ -21,7 +21,8 @@ use DateTimeImmutable;
  *    litespeed_finish_request() has sent the answer. The JSON route
  *    schedules it always (the bubble's script loads that route in the
  *    background); a page render only where such a function exists, since
- *    elsewhere the visitor would wait.
+ *    elsewhere the visitor would wait. In pull mode the bubble snippet prints
+ *    its markup even with nothing to show, so that the route gets called.
  */
 final class Pull
 {

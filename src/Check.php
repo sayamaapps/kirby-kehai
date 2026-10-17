@@ -60,6 +60,9 @@ final class Check
         } elseif (!$config['bubble'] && !$config['summary']) {
             $notes[] = 'kehai.bubble and kehai.summary are both off: nothing is shown.';
         }
+        if ($config['active'] && $config['pull'] && !$config['bubble']) {
+            $notes[] = 'kehai.pull is on and kehai.bubble is off: only a page render on PHP-FPM or LiteSpeed starts the fetch (the bubble\'s script would call the route elsewhere). On another server use the workflow.';
+        }
         if ($config['products'] === []) {
             $problems[] = 'kehai.products is empty: no purchase is counted.';
         }

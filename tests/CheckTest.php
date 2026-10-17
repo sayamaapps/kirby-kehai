@@ -75,6 +75,13 @@ try {
     holds(str_contains($out, 'kehai.active is off'), 'note: switched off');
     holds(str_contains($out, 'holds a key although pull mode is off'), 'note: key on the web server without pull mode');
     holds(str_contains($out, '1 events for the product key "fremd"'), 'note: events of an unknown product key');
+    $pullNote = 'kehai.pull is on and kehai.bubble is off';
+    [$code, $out] = $check(testConfig($tmp, ['pull' => true, 'bubble' => false]), [], true);
+    holds($code === Check::EXIT_OK && str_contains($out, $pullNote) && str_contains($out, 'only a page render on PHP-FPM or LiteSpeed starts the fetch'), 'note: pull mode without the bubble');
+    [, $out] = $check(testConfig($tmp, ['pull' => true, 'bubble' => true]), [], true);
+    holds(!str_contains($out, $pullNote), 'no note: pull mode with the bubble');
+    [, $out] = $check(testConfig($tmp, ['pull' => true, 'bubble' => false, 'active' => false]), [], true);
+    holds(!str_contains($out, $pullNote), 'no note: pull mode without the bubble, but switched off');
     [, $out] = $check($config);
     holds(str_contains($out, 'No event in the last 14 days: the bubble stays hidden.'), 'note: nothing to show');
 

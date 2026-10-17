@@ -160,7 +160,14 @@ App::plugin('sayamaapps/kehai', [
             return Display::summary(Events::usable($config, $now), $config, $now, $language, $name, $days, $min);
         },
 
-        /** Whether the bubble has something to show right now (the snippet asks before printing anything). */
+        /**
+         * Whether the snippet prints the bubble: there is a real event to show
+         * — or pull mode is on. In pull mode the container and the script are
+         * printed even while there is nothing to show, since the script's call
+         * of /kehai/events.json is what triggers the fetch (on PHP-FPM and
+         * LiteSpeed a page render does too); the visitor sees nothing until
+         * there is an event.
+         */
         'kehaiBubble' => function (?array $products = null): bool {
             $kirby = $this->kirby();
             $config = Options::config($kirby)['config'];
@@ -173,7 +180,8 @@ App::plugin('sayamaapps/kehai', [
             kehai_cache_limit($kirby);
             $now = new DateTimeImmutable('now');
             $keys = $products === null ? null : array_values(array_intersect(Config::keys($config), $products));
-            return Display::bubble(Events::usable($config, $now), $config, $now, I18n::language(), $keys) !== [];
+            $shown = Display::bubble(Events::usable($config, $now), $config, $now, I18n::language(), $keys) !== [];
+            return $shown || $config['pull'];
         },
     ],
 
