@@ -12,11 +12,21 @@ use DateTimeZone;
  *   {
  *     "format": 1,
  *     "generated": "2026-10-13T09:00:12Z",
+ *     "from": "2026-09-29T09:00:12Z",
  *     "source": "digistore24",
  *     "events": [
  *       {"type": "purchase", "product": "jahreskurs", "at": "2026-10-13T07:41:00Z", "country": "AT"}
  *     ]
  *   }
+ *
+ * `from` (optional, since 1.1.0) is the start of the period the file covers
+ * completely: it holds every event of the source from `from` to `generated`;
+ * before `from` it may hold some (the boundary minute), not all. It is the
+ * requested window start, or later when an answer was cut (the source's
+ * page limit, MAX_EVENTS). A summary never counts further back than `from`.
+ * A 1.0.0 file has none and is assumed to cover the fetch window of the
+ * configuration that reads it (covered()). The format stays 1: 1.0.0 reads
+ * a 1.1.0 file and ignores the field.
  *
  * An event has exactly these fields. `type` is one of TYPES, `product` a
  * product key from the site's configuration (never the source's id or
@@ -81,10 +91,13 @@ final class Events
 
     /**
      * The content of a new data file: the cleaned events, newest first.
+     * `from` is what the caller's source covers; it moves forward to the
+     * minute after the oldest kept event when more than MAX_EVENTS events
+     * had to be cut, and is never later than `generated`.
      *
      * @param list<array> $events
      */
-    public static function build(array $events, DateTimeImmutable $generated, string $source, bool $country, ?array $keys = null): array
+    public static function build(array $events, DateTimeImmutable $generated, string $source, bool $country, ?array $keys = null, ?DateTimeImmutable $from = null): array
     {
         $clean = [];
         foreach ($events as $event) {
@@ -93,12 +106,18 @@ final class Events
             }
         }
         usort($clean, fn (array $a, array $b) => strcmp($b['at'], $a['at']));
-        return [
-            'format'    => self::FORMAT,
-            'generated' => $generated->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z'),
-            'source'    => $source,
-            'events'    => array_slice($clean, 0, self::MAX_EVENTS),
-        ];
+        $kept = array_slice($clean, 0, self::MAX_EVENTS);
+        if (count($clean) > self::MAX_EVENTS) {
+            $edge = self::time($kept[count($kept) - 1])->modify('+60 seconds');
+            $from = $from === null || $edge > $from ? $edge : $from;
+        }
+        $utc = new DateTimeZone('UTC');
+        $generated = $generated->setTimezone($utc);
+        $data = ['format' => self::FORMAT, 'generated' => $generated->format('Y-m-d\TH:i:s\Z')];
+        if ($from !== null) {
+            $data['from'] = ($from > $generated ? $generated : $from->setTimezone($utc))->format('Y-m-d\TH:i:s\Z');
+        }
+        return $data + ['source' => $source, 'events' => $kept];
     }
 
     /**
@@ -136,11 +155,11 @@ final class Events
      * not JSON, an unknown format. Events that do not pass clean() are
      * dropped silently (and counted in `dropped`).
      *
-     * @return array{error: ?string, generated: ?DateTimeImmutable, source: ?string, events: list<array>, dropped: int}
+     * @return array{error: ?string, generated: ?DateTimeImmutable, from: ?DateTimeImmutable, source: ?string, events: list<array>, dropped: int}
      */
     public static function read(string $file, bool $country = true, ?array $keys = null): array
     {
-        $empty = ['error' => null, 'generated' => null, 'source' => null, 'events' => [], 'dropped' => 0];
+        $empty = ['error' => null, 'generated' => null, 'from' => null, 'source' => null, 'events' => [], 'dropped' => 0];
         if ($file === '' || !is_file($file)) {
             return ['error' => 'missing'] + $empty;
         }
@@ -165,6 +184,7 @@ final class Events
         return [
             'error'     => null,
             'generated' => $generated,
+            'from'      => self::parse($data['from'] ?? null),
             'source'    => is_string($data['source'] ?? null) ? Text::plain($data['source'], 40) : null,
             'events'    => $events,
             'dropped'   => $dropped,
@@ -176,25 +196,39 @@ final class Events
      * not older than `maxStale` hours, restricted to configured products,
      * without events in the future. When there is nothing to use the reason
      * is logged (once per process) and the list is empty — the page then
-     * shows nothing, never an old or made-up entry.
+     * shows nothing, never an old or made-up entry. `from` is where the file
+     * says its coverage starts (null: not recorded, see covered()).
      *
-     * @return list<array{type:string, product:string, at:string, country?:string}>
+     * @return array{events: list<array{type:string, product:string, at:string, country?:string}>, from: ?DateTimeImmutable}
      */
     public static function usable(array $config, DateTimeImmutable $now): array
     {
         $read = self::read($config['file'], $config['country'], Config::keys($config));
         if ($read['error'] !== null) {
             Log::error('Kehai: nothing shown, the data file ' . $config['file'] . ' is ' . ($read['error'] === 'missing' ? 'missing' : 'unusable: ' . $read['error']));
-            return [];
+            return ['events' => [], 'from' => null];
         }
         $age = $now->getTimestamp() - $read['generated']->getTimestamp();
         if ($age > $config['maxStale'] * 3600) {
             Log::error('Kehai: nothing shown, the data file ' . $config['file'] . ' was last updated ' . intdiv($age, 3600)
                 . ' hours ago (kehai.maxStale is ' . $config['maxStale'] . ')');
-            return [];
+            return ['events' => [], 'from' => null];
         }
         $limit = $now->getTimestamp() + self::FUTURE_TOLERANCE;
-        return array_values(array_filter($read['events'], fn (array $e) => self::time($e)->getTimestamp() <= $limit));
+        return [
+            'events' => array_values(array_filter($read['events'], fn (array $e) => self::time($e)->getTimestamp() <= $limit)),
+            'from'   => $read['from'],
+        ];
+    }
+
+    /**
+     * The number of whole days before $now that a file covers completely.
+     * A file without `from` (1.0.0) is assumed to cover the fetch window of
+     * this configuration.
+     */
+    public static function covered(?DateTimeImmutable $from, array $config, DateTimeImmutable $now): int
+    {
+        return $from === null ? Config::window($config) : max(0, intdiv($now->getTimestamp() - $from->getTimestamp(), 86400));
     }
 
     /** "2026-10-13T07:41:00Z" as a time, or null — also for dates that do not exist (2026-02-31). */

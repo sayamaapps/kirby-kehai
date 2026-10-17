@@ -104,7 +104,7 @@ function kehai_route(): Response|false
     $language = get('lang');
     $language = kehai_i18n(is_string($language) && in_array($language, I18n::LANGUAGES, true) ? $language : null);
     $now = new DateTimeImmutable('now');
-    $events = Display::bubble(Events::usable($config, $now), $config, $now, $language, kehai_keys(get('products'), $config));
+    $events = Display::bubble(Events::usable($config, $now)['events'], $config, $now, $language, kehai_keys(get('products'), $config));
     $body = [
         'now'    => $now->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z'),
         'texts'  => Display::times(),
@@ -157,7 +157,8 @@ App::plugin('sayamaapps/kehai', [
             kehai_cache_limit($kirby);
             $language = kehai_i18n();
             $now = new DateTimeImmutable('now');
-            return Display::summary(Events::usable($config, $now), $config, $now, $language, $name, $days, $min);
+            $usable = Events::usable($config, $now);
+            return Display::summary($usable['events'], $config, $now, $language, $name, $days, $min, $usable['from']);
         },
 
         /**
@@ -180,7 +181,7 @@ App::plugin('sayamaapps/kehai', [
             kehai_cache_limit($kirby);
             $now = new DateTimeImmutable('now');
             $keys = $products === null ? null : array_values(array_intersect(Config::keys($config), $products));
-            $shown = Display::bubble(Events::usable($config, $now), $config, $now, I18n::language(), $keys) !== [];
+            $shown = Display::bubble(Events::usable($config, $now)['events'], $config, $now, I18n::language(), $keys) !== [];
             return $shown || $config['pull'];
         },
     ],

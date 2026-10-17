@@ -51,7 +51,7 @@ final class Check
         $say('bubble: ' . $onOff($config['bubble']) . ($config['bubble']
             ? " ({$config['position']}, after {$config['delay']} s, at most {$config['max']}, events up to {$config['maxAge']} days old)" : ''), 1);
         $say('summary: ' . $onOff($config['summary']) . ($config['summary']
-            ? " (last {$config['summaryDays']} days, at least {$config['summaryMin']})" : ''), 1);
+            ? " (last {$config['summaryDays']} days, at least {$config['summaryMin']}; the fetch reads " . Config::window($config) . ' days)' : ''), 1);
         $say('pull: ' . $onOff($config['pull']) . ($config['pull'] ? " (every {$config['pullInterval']} minutes)" : '')
             . ', key in site/config/' . Options::SECRETS . ': ' . ($keyFile ? 'yes' : 'no'), 1);
 
@@ -84,9 +84,16 @@ final class Check
         } else {
             $age = $now->getTimestamp() - $read['generated']->getTimestamp();
             $say('generated ' . $read['generated']->format('Y-m-d H:i') . ' UTC (' . self::age($age) . ' ago), source ' . ($read['source'] ?? '?') . ', format ' . Events::FORMAT, 1);
+            $covered = Events::covered($read['from'], $config, $now);
+            $say($read['from'] === null
+                ? 'covers: not recorded (written by 1.0.0; the fetch window of this configuration is assumed)'
+                : 'covers ' . $covered . ' days (from ' . $read['from']->format('Y-m-d H:i') . ' UTC)', 1);
             $say(count($read['events']) . ' events' . ($read['dropped'] > 0 ? ', ' . $read['dropped'] . ' invalid entries ignored' : ''), 1);
             if ($read['dropped'] > 0) {
                 $notes[] = $read['dropped'] . ' entries in the data file are not valid events and are ignored.';
+            }
+            if ($read['from'] !== null && $covered < $config['summaryDays']) {
+                $notes[] = "The data file covers only $covered days: summaries are shortened to $covered days (the source's answer was cut; see kehai fetch).";
             }
             if ($age > $config['maxStale'] * 3600) {
                 $problems[] = 'The data file is older than kehai.maxStale (' . $config['maxStale'] . ' hours): nothing is shown until the next successful fetch.';

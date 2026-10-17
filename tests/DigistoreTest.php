@@ -12,6 +12,7 @@ require_once __DIR__ . '/helpers.php';
 
 use Kehai\Config;
 use Kehai\Digistore24;
+use Kehai\Events;
 use Kehai\Fetch;
 use Kehai\SourceException;
 
@@ -46,8 +47,15 @@ try {
     $url = parse_url($calls[0]['url']);
     parse_str($url['query'], $query);
     expect('https://www.digistore24.com/api/call/listPurchases/json', $url['scheme'] . '://' . $url['host'] . $url['path'], 'endpoint');
-    expect(['from' => '2026-09-29', 'to' => '2026-10-14', 'search' => ['order_type' => 'live'], 'page_no' => '1', 'page_size' => '500'], $query,
-        'from = window start, to = tomorrow (today complete), live orders only, paged');
+    expect(['from' => '2026-09-29', 'to' => '2026-10-14', 'search' => ['order_type' => 'live', 'product_id' => '111111,111112,222222'], 'sort_by' => 'date', 'sort_order' => 'desc', 'page_no' => '1', 'page_size' => '500'], $query,
+        'from = window start, to = tomorrow (today complete), live orders of the allow list only, newest first, paged');
+    expect($from->format('c'), $result['from']->format('c'), 'an answer that is not cut covers the period asked for');
+    holds(!str_contains(implode("\n", $result['notes']), 'cut its answer'), 'no note about a cut');
+    $calls = [];
+    (new Digistore24(scripted([$ok()], $calls), $key, [], false, 'Europe/Berlin'))->events($from, $now);
+    parse_str((string) parse_url($calls[0]['url'], PHP_URL_QUERY), $open);
+    expect(['order_type' => 'live'], $open['search'], 'empty allow list: no product filter in the request');
+    expect(['date', 'desc'], [$open['sort_by'], $open['sort_order']], 'empty allow list: still newest first');
     holds(in_array('X-DS-API-KEY: ' . $key, $calls[0]['headers'], true), 'key as X-DS-API-KEY header');
     holds(!str_contains($calls[0]['url'], $key), 'key never in the URL');
 
@@ -134,6 +142,36 @@ try {
     expect(2, count($calls), 'a full page asks for page 2');
     holds(str_contains($calls[1]['url'], 'page_no=2'), 'page 2 requested');
     expect(Digistore24::PAGE_SIZE + 1, count($paged['events']), 'events of both pages');
+    expect($from->format('c'), $paged['from']->format('c'), 'two pages, the last one not full: not cut');
+
+    // ---- An answer cut at MAX_PAGES: the newest orders come first, the oldest fall off -----
+    $berlin = new DateTimeZone('Europe/Berlin');
+    $fullPages = function (int $counted) use ($base, $now, $berlin, $ok): array {
+        $script = [];
+        for ($p = 1; $p <= Digistore24::MAX_PAGES; $p++) {
+            $at = $now->modify('-' . ($p * 16) . ' hours')->setTimezone($berlin)->format('Y-m-d H:i:s');
+            $list = [];
+            for ($i = 0; $i < Digistore24::PAGE_SIZE; $i++) {
+                $list[] = array_merge($base, ['id' => "P$p-$i", 'created_at' => $at] + ($i < $counted ? [] : ['main_product_id' => '333333']));
+            }
+            $script[] = $ok(json_encode(['result' => 'success', 'data' => ['purchase_list' => $list]]));
+        }
+        return $script;
+    };
+    $calls = [];
+    $cut = $adapter($fullPages(Digistore24::PAGE_SIZE))->events($from, $now);
+    expect(Digistore24::MAX_PAGES, count($calls), 'twenty full pages: exactly MAX_PAGES requests, a 21st page is never asked for');
+    holds(str_contains($calls[Digistore24::MAX_PAGES - 1]['url'], 'page_no=20') && !str_contains(implode(' ', array_column($calls, 'url')), 'page_no=21'), 'page 20 is the last request');
+    expect('2026-09-30T02:01:00Z', $cut['from']->setTimezone($utc)->format('Y-m-d\TH:i:s\Z'), 'cut: "from" is the minute after the oldest order received (page 20, 320 hours before now)');
+    holds($cut['from'] instanceof DateTimeImmutable && $cut['from'] > $from, 'cut: "from" is later than asked');
+    holds(in_array('the source cut its answer after 10000 orders (MAX_PAGES × PAGE_SIZE): the file covers the last 13 days only', $cut['notes'], true), 'cut: noted, with the days left (' . implode(' | ', $cut['notes']) . ')');
+    expect(Digistore24::MAX_PAGES * Digistore24::PAGE_SIZE, count($cut['events']), 'cut: every received order is a counted event here');
+    $calls = [];
+    $stop = $adapter(array_slice($fullPages(1), 0, Digistore24::MAX_PAGES - 1) + [Digistore24::MAX_PAGES - 1 => $ok(json_encode(['result' => 'success', 'data' => ['purchase_list' => [$base]]]))])->events($from, $now);
+    expect([Digistore24::MAX_PAGES, $from->format('c')], [count($calls), $stop['from']->format('c')], 'page 20 not full: the answer was not cut, "from" as asked');
+    $unreadable = $fullPages(1);
+    $unreadable[Digistore24::MAX_PAGES - 1] = $ok(json_encode(['result' => 'success', 'data' => ['purchase_list' => array_fill(0, Digistore24::PAGE_SIZE, ['id' => 'x', 'created_at' => 'soon'])]]));
+    expect('2026-09-30T18:01:00Z', $adapter($unreadable)->events($from, $now)['from']->setTimezone($utc)->format('Y-m-d\TH:i:s\Z'), 'cut: an entry without a readable created_at is ignored when looking for the oldest');
 
     // ---- kehai fetch -----------------------------------------------------------
     $file = $config['file'];
@@ -157,8 +195,9 @@ try {
     expect('2026-09-29', $query['from'], 'window = max(maxAge 14, summaryDays 7) days');
     $written = file_get_contents($file);
     $data = json_decode($written, true);
-    expect(['format', 'generated', 'source', 'events'], array_keys($data), 'file: exactly these top-level fields');
-    expect([1, '2026-10-13T10:00:00Z', 'digistore24'], [$data['format'], $data['generated'], $data['source']], 'format, generation time, source');
+    expect(['format', 'generated', 'from', 'source', 'events'], array_keys($data), 'file: exactly these top-level fields');
+    expect([1, '2026-10-13T10:00:00Z', '2026-09-29T10:00:00Z', 'digistore24'], [$data['format'], $data['generated'], $data['from'], $data['source']], 'format, generation time, covered since, source');
+    holds(!str_contains($out, 'window:'), 'fetch: an uncut answer has no note about the window');
     expect($events, $data['events'], 'file: the four events, newest first');
     foreach ($data['events'] as $event) {
         expect(['type', 'product', 'at'], array_keys($event), 'file: an event has only type, product and at (country off)');
@@ -172,6 +211,25 @@ try {
     }
     holds(!str_contains($written . $out . $err, $key), 'key never written or printed');
     holds(Kehai\Text::isPlain($out . $err), 'output is plain text');
+
+    // A cut answer: the source's cut (20 pages), the MAX_EVENTS cut, or both — the file says what it covers, the output says so.
+    $calls = [];
+    [$code, $out, $err] = $run($config, $key, scripted($fullPages(1), $calls));
+    $data = json_decode(file_get_contents($file), true);
+    expect([Fetch::EXIT_OK, Digistore24::MAX_PAGES, 20, '2026-09-30T02:01:00Z'], [$code, count($calls), count($data['events']), $data['from']], 'fetch, source cut only: file covers since the oldest order received (' . $err . ')');
+    holds(str_contains($out, 'the source cut its answer after 10000 orders') && str_contains($out, "window: 14 days asked, 13 days covered\n"), 'fetch, source cut only: both notes (' . $out . ')');
+    $calls = [];
+    [$code, $out] = $run($config, $key, scripted($fullPages(Digistore24::PAGE_SIZE), $calls));
+    $data = json_decode(file_get_contents($file), true);
+    expect([Events::MAX_EVENTS, '2026-10-10T18:01:00Z'], [count($data['events']), $data['from']], 'fetch, both cuts: the later "from" wins (the 2000 cut: minute after page 4)');
+    holds(str_contains($out, 'the source cut its answer') && str_contains($out, 'window: 14 days asked, 2 days covered'), 'fetch, both cuts: the source note and one window note (' . $out . ')');
+    expect(1, substr_count($out, 'window:'), 'fetch: one window note');
+    $calls = [];
+    $q = array_map(fn ($i) => array_merge($base, ['id' => "Q$i", 'created_at' => $now->modify("-$i minutes")->setTimezone($berlin)->format('Y-m-d H:i:s')]), range(1, Events::MAX_EVENTS + 5));
+    [$code, $out] = $run($config, $key, scripted(array_map(fn ($chunk) => $ok(json_encode(['result' => 'success', 'data' => ['purchase_list' => $chunk]])), array_chunk($q, Digistore24::PAGE_SIZE)), $calls));
+    $data = json_decode(file_get_contents($file), true);
+    expect([5, Events::MAX_EVENTS, '2026-10-12T00:41:00Z'], [count($calls), count($data['events']), $data['from']], 'fetch, 2005 purchases in the window: 2000 kept, "from" after the oldest kept');
+    holds(str_contains($out, 'window: 14 days asked, 1 days covered') && !str_contains($out, 'cut its answer'), 'fetch, MAX_EVENTS cut only: the window note alone (' . $out . ')');
 
     // Country on: the code is stored, nothing more.
     [$code] = $run(testConfig($tmp, ['country' => true]), $key, scripted([$ok()], $calls));
