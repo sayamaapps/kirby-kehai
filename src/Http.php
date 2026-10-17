@@ -12,8 +12,8 @@ use Closure;
  *
  * ext-curl when available, otherwise PHP's stream wrapper. HTTPS only, no
  * redirects (a redirect would carry the key header to another host), at
- * most MAX_BYTES, and a hard time limit: 30 seconds for the CLI, 5 seconds
- * in pull mode (Pull::TIMEOUT).
+ * most MAX_BYTES, and a hard time limit: 30 seconds for the CLI, in pull
+ * mode what is left of Pull::TIMEOUT for the whole pull.
  */
 final class Http
 {

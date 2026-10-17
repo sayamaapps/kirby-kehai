@@ -128,7 +128,7 @@ The site then fetches by itself:
 
 - at most every `pullInterval` minutes (15); a failed attempt counts too, so a broken source is not asked on every request;
 - one fetch at a time (an exclusive, non-blocking lock in `storage/kehai/`);
-- with a time limit of 5 seconds;
+- with a time limit of 5 seconds for the whole fetch, all pages together (a request gets only the time that is left);
 - on any error the last good file stays and the error log gets one line;
 - **never while a visitor waits.** The fetch is started from the `/kehai/events.json` route, which the bubble's script loads in the background, and it runs after the answer has been handed over. On PHP-FPM (and LiteSpeed) a page render can start it as well, after `fastcgi_finish_request()`; elsewhere only the route does, since the visitor would wait otherwise. In pull mode the bubble's snippet prints its container and script even while there is nothing to show, so that the route is called and the fetch can start again after a quiet spell or an outage; the visitor sees nothing until there is an event. A site that uses only the summary should therefore run on PHP-FPM or use the workflow.
 
