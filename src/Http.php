@@ -18,7 +18,7 @@ use Closure;
 final class Http
 {
     public const MAX_BYTES = 10_000_000;
-    public const USER_AGENT = 'kirby-kehai/1.0 (+https://github.com/simsimmal/kirby-kehai)';
+    public const USER_AGENT = 'kirby-kehai/1.1 (+https://github.com/simsimmal/kirby-kehai)';
 
     public static function transport(int $timeout = 30): Closure
     {
