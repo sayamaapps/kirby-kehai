@@ -37,19 +37,40 @@ try {
     $config = testConfig($tmp, ['bubble' => true, 'summary' => true]);
     Events::write($config['file'], Events::build([
         $event('jahreskurs', '-1 hour'), $event('jahreskurs', '-2 days'), $event('jahreskurs', '-3 days'), $event('wochenendkurs', '-10 days'),
-    ], $now->modify('-30 minutes'), 'digistore24', false));
+    ], $now->modify('-30 minutes'), 'digistore24', false, null, $now->modify('-14 days')));
     [$code, $out] = $check($config);
     expect(Check::EXIT_OK, $code, 'healthy: exit 0 (' . $out . ')');
     foreach ([
         'active: on', 'products: 3', '111111 → jahreskurs ("Jahreskurs" / "Annual course")', 'group kurse: jahreskurs, wochenendkurs',
-        'bubble: on (left, after 8 s, at most 3, events up to 14 days old)', 'summary: on (last 7 days, at least 3)',
-        'generated 2026-10-13 09:30 UTC (30 minutes ago), source digistore24, format 1', '4 events',
+        'bubble: on (left, after 8 s, at most 3, events up to 14 days old)', 'summary: on (last 7 days, at least 3; the fetch reads 14 days)',
+        'generated 2026-10-13 09:30 UTC (30 minutes ago), source digistore24, format 1', 'covers 14 days (from 2026-09-29 10:00 UTC)', '4 events',
         'jahreskurs: 3 in the last 14 days (bubble), 3 in the last 7 days (summary, shown)',
         'wochenendkurs: 1 in the last 14 days (bubble), 0 in the last 7 days (summary, below 3, not shown)',
         'group kurse: 3 in the last 7 days (summary, shown)', 'No problems.',
     ] as $line) {
         holds(str_contains($out, $line), "healthy: reports \"$line\"");
     }
+    holds(!str_contains($out, 'covers only'), 'healthy: no note about a shortened coverage');
+
+    // ---- What the file covers ------------------------------------------------------
+    $write = fn (?DateTimeImmutable $from, ?array $events = null) => Events::write($config['file'], Events::build($events ?? [$event('jahreskurs', '-1 hour')], $now->modify('-30 minutes'), 'digistore24', false, null, $from));
+    $write(null);
+    [$code, $out] = $check($config);
+    holds($code === Check::EXIT_OK && str_contains($out, 'covers: not recorded (written by 1.0.0; the fetch window of this configuration is assumed)') && !str_contains($out, 'covers only'),
+        'file without "from" (1.0.0): coverage not recorded, no note, no problem');
+    $write($now->modify('-3 days 30 minutes'));
+    [$code, $out] = $check($config);
+    holds(str_contains($out, 'covers 2 days (from 2026-10-10 10:30 UTC)') && str_contains($out, 'The data file covers only 2 days: summaries are shortened to 2 days (the source\'s answer was cut; see kehai fetch).'),
+        'a file that covers less than summaryDays: the coverage and a note (' . $out . ')');
+    expect(Check::EXIT_OK, $code, 'a shortened coverage is a note, not a problem');
+    holds(str_contains($out, 'jahreskurs: 1 in the last 14 days (bubble), 1 in the last 2 days (summary, below 3, not shown)'), 'a shortened coverage: the per-product line counts the shortened period (' . $out . ')');
+    $write($now->modify('-10 minutes'));
+    [$code, $out] = $check($config);
+    holds($code === Check::EXIT_OK && str_contains($out, 'covers 0 days (from 2026-10-13 09:30 UTC)') && str_contains($out, 'The data file covers less than a day: summaries show nothing')
+        && str_contains($out, 'jahreskurs: 1 in the last 14 days (bubble), summary not shown (the data file covers less than a day)') && str_contains($out, 'group kurse: summary not shown'),
+        'a file that covers less than a day: the note and the lines say the summary shows nothing (' . $out . ')');
+    $write($now->modify('-7 days'));
+    holds(!str_contains($check($config)[1], 'covers only'), 'coverage equal to summaryDays: no note');
 
     // ---- Problems: exit 1 ---------------------------------------------------------
     Events::write($config['file'], Events::build([$event('jahreskurs', '-1 hour')], $now->modify('-49 hours'), 'digistore24', false));
@@ -75,6 +96,13 @@ try {
     holds(str_contains($out, 'kehai.active is off'), 'note: switched off');
     holds(str_contains($out, 'holds a key although pull mode is off'), 'note: key on the web server without pull mode');
     holds(str_contains($out, '1 events for the product key "fremd"'), 'note: events of an unknown product key');
+    $pullNote = 'kehai.pull is on and kehai.bubble is off';
+    [$code, $out] = $check(testConfig($tmp, ['pull' => true, 'bubble' => false]), [], true);
+    holds($code === Check::EXIT_OK && str_contains($out, $pullNote) && str_contains($out, 'only a page render on PHP-FPM or LiteSpeed starts the fetch'), 'note: pull mode without the bubble');
+    [, $out] = $check(testConfig($tmp, ['pull' => true, 'bubble' => true]), [], true);
+    holds(!str_contains($out, $pullNote), 'no note: pull mode with the bubble');
+    [, $out] = $check(testConfig($tmp, ['pull' => true, 'bubble' => false, 'active' => false]), [], true);
+    holds(!str_contains($out, $pullNote), 'no note: pull mode without the bubble, but switched off');
     [, $out] = $check($config);
     holds(str_contains($out, 'No event in the last 14 days: the bubble stays hidden.'), 'note: nothing to show');
 

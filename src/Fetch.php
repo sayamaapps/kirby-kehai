@@ -45,10 +45,15 @@ final class Fetch
     {
         $from = $now->modify('-' . Config::window($config) . ' days');
         $result = $source->events($from, $now);
-        $data = Events::build($result['events'], $now, $source->id(), $config['country'], Config::keys($config));
+        $data = Events::build($result['events'], $now, $source->id(), $config['country'], Config::keys($config), $result['from']);
         $counts = array_count_values(array_column($data['events'], 'product'));
         ksort($counts);
         $notes = $result['notes'];
+        // The source's cut or the MAX_EVENTS cut: the file covers less than was asked for.
+        $covers = Events::parse($data['from'] ?? null);
+        if ($covers !== null && $covers > $from) {
+            $notes[] = 'window: ' . Config::window($config) . ' days asked, ' . Events::covered($covers, $config, $now) . ' days covered';
+        }
         foreach ($counts as $product => $count) {
             $notes[] = "  $product: $count";
         }

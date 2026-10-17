@@ -3,7 +3,12 @@
  * The summary: one line for the page text, rendered on the server.
  *
  *   <?php snippet('kehai/summary', ['product' => 'jahreskurs']) ?>
- *   <?php snippet('kehai/summary', ['product' => 'courses', 'days' => 30, 'min' => 5]) ?>   (a group from kehai.groups)
+ *   <?php snippet('kehai/summary', ['product' => 'courses', 'days' => 30, 'min' => 5]) ?>   (a group from kehai.groups; needs kehai.summaryDays ≥ 30)
+ *
+ * `days` can be shorter than `kehai.summaryDays`, not longer than what the
+ * fetch reads, max(kehai.maxAge, kehai.summaryDays): a longer period is
+ * shortened to what the data file covers (and the text says so). For a
+ * 30-day summary set `kehai.summaryDays` to 30.
  *
  * "In the last 7 days, “Jahreskurs” was booked 12 times." Counts real
  * purchases in the period; below the minimum (`kehai.summaryMin`, default 3)

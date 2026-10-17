@@ -14,14 +14,17 @@ use DateTimeImmutable;
  *    failing source is not asked on every request.
  *  - One fetch at a time: an exclusive, non-blocking lock. A second request
  *    that finds the lock taken does nothing.
- *  - Five seconds at most (TIMEOUT).
+ *  - Five seconds for the whole pull (TIMEOUT), however many pages the
+ *    source needs: each request gets the time that is left, and none is
+ *    made once it is used up.
  *  - On any error the last good file stays; one line goes to the log.
  *  - The page never waits for the source. later() only remembers the job;
  *    it runs at shutdown, after fastcgi_finish_request() (PHP-FPM) or
  *    litespeed_finish_request() has sent the answer. The JSON route
  *    schedules it always (the bubble's script loads that route in the
  *    background); a page render only where such a function exists, since
- *    elsewhere the visitor would wait.
+ *    elsewhere the visitor would wait. In pull mode the bubble snippet prints
+ *    its markup even with nothing to show, so that the route gets called.
  */
 final class Pull
 {
@@ -30,8 +33,12 @@ final class Pull
     /**
      * Makes the transport for a timeout: Http::transport() unless a test
      * replaces the network. fn (int $timeout): Closure
+     * Called once per request, with the whole seconds that are left.
      */
     public static ?Closure $transports = null;
+
+    /** Seconds on a monotonic clock, for tests: fn (): float. Default hrtime(true) / 1e9. */
+    public static ?Closure $clock = null;
 
     /** @var array{0: array, 1: string}|null */
     private static ?array $pending = null;
@@ -93,7 +100,7 @@ final class Pull
                 return 'not due';
             }
             touch(self::marker($config['file']), $now->getTimestamp());
-            $transport = self::$transports !== null ? (self::$transports)(self::TIMEOUT) : Http::transport(self::TIMEOUT);
+            $transport = self::withDeadline(self::now());
             $source = Fetch::source($config, $key, $transport);
             Events::write($config['file'], Fetch::collect($source, $config, $now)['data']);
             return 'written';
@@ -104,6 +111,30 @@ final class Pull
             flock($lock, LOCK_UN);
             fclose($lock);
         }
+    }
+
+    private static function now(): float
+    {
+        return self::$clock !== null ? (self::$clock)() : hrtime(true) / 1e9;
+    }
+
+    /**
+     * A transport for the whole pull: every request gets only the whole
+     * seconds that are left of TIMEOUT; once they are used up it throws
+     * without a request. The overshoot is under one second with curl (the
+     * stream fallback's timeout is per read).
+     */
+    private static function withDeadline(float $start): Closure
+    {
+        return function (string $url, array $headers) use ($start): array {
+            $left = self::TIMEOUT - (self::now() - $start);
+            if ($left <= 0) {
+                throw new \RuntimeException('the pull reached its time limit of ' . self::TIMEOUT . ' seconds');
+            }
+            $timeout = (int) ceil($left);
+            $transport = self::$transports !== null ? (self::$transports)($timeout) : Http::transport($timeout);
+            return $transport($url, $headers);
+        };
     }
 
     /** Remembers a pull for the end of the request (once per request). */

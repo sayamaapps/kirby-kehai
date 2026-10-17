@@ -108,13 +108,15 @@ The output lists how many purchases arrived and how many counted, the reason for
 
 The fetch reads the last `max(maxAge, summaryDays)` days (14 by default) and replaces the file completely on every run. A purchase that is refunded tomorrow disappears from the site with the next run.
 
+The request asks Digistore24 for the configured product ids only, newest first. The file records the start of the period it covers (`from`, see "Data file"). When the answer is cut — 20 full pages of 500 orders from Digistore24, or more than 2,000 counted purchases in the window — the file covers a shorter period (nothing, if the cut answer was not newest first), the output says so (`window: 14 days asked, 9 days covered`), and the summaries shorten to it.
+
 ### `kehai check`
 
 ```sh
 vendor/bin/kehai check [--root=.]
 ```
 
-Shows the configuration, the data file (age, format, number of events), the events per product and group (in the bubble's and in the summary's period, and whether the summary reaches its minimum) and notes such as "No event in the last 14 days: the bubble stays hidden". Exit code `0` when nothing is wrong, `1` when there is a problem (file missing, older than `maxStale`, unreadable; configuration errors; pull mode without key), `2` for wrong usage. Every value from the configuration and the data file is printed as plain text: control characters, escape sequences and bidi overrides are removed first.
+Shows the configuration, the data file (age, format, the period it covers, number of events), the events per product and group (in the bubble's and in the summary's period, and whether the summary reaches its minimum) and notes such as "No event in the last 14 days: the bubble stays hidden". Exit code `0` when nothing is wrong, `1` when there is a problem (file missing, older than `maxStale`, unreadable; configuration errors; pull mode without key), `2` for wrong usage. Every value from the configuration and the data file is printed as plain text: control characters, escape sequences and bidi overrides are removed first.
 
 ### Pull mode
 
@@ -128,9 +130,9 @@ The site then fetches by itself:
 
 - at most every `pullInterval` minutes (15); a failed attempt counts too, so a broken source is not asked on every request;
 - one fetch at a time (an exclusive, non-blocking lock in `storage/kehai/`);
-- with a time limit of 5 seconds;
+- with a time limit of 5 seconds for the whole fetch, all pages together (a request gets only the time that is left);
 - on any error the last good file stays and the error log gets one line;
-- **never while a visitor waits.** The fetch is started from the `/kehai/events.json` route, which the bubble's script loads in the background, and it runs after the answer has been handed over. On PHP-FPM (and LiteSpeed) a page render can start it as well, after `fastcgi_finish_request()`; elsewhere only the route does, since the visitor would wait otherwise. A site that uses only the summary should therefore run on PHP-FPM or use the workflow.
+- **never while a visitor waits.** The fetch is started from the `/kehai/events.json` route, which the bubble's script loads in the background, and it runs after the answer has been handed over. On PHP-FPM (and LiteSpeed) a page render can start it as well, after `fastcgi_finish_request()`; elsewhere only the route does, since the visitor would wait otherwise. In pull mode the bubble's snippet prints its container and script even while there is nothing to show, so that the route is called and the fetch can start again after a quiet spell or an outage; the visitor sees nothing until there is an event. A site that uses only the summary should therefore run on PHP-FPM or use the workflow.
 
 The key is then on the web server, in a PHP file that is never served. The workflow avoids that and is the recommended setup.
 
@@ -203,7 +205,7 @@ Invalid values fall back to the default; the reason is written to the error log 
 <?php snippet('kehai/bubble', ['products' => ['jahreskurs']]) ?>   // only these product keys, e.g. on the offer's page
 ```
 
-Prints nothing unless Kehai and the bubble are on and there is a real event to show. Otherwise:
+Prints nothing unless Kehai and the bubble are on and there is a real event to show (in pull mode the markup below is printed even without one, so the script can call the route). Otherwise:
 
 ```html
 <link rel="stylesheet" href="/media/plugins/sayamaapps/kehai/…/kehai.css">
@@ -224,18 +226,20 @@ The container is fixed to a corner and empty until the script fills it, so it ne
  "events": [{"text": "Jemand aus Österreich hat „Jahreskurs“ gebucht", "at": "2026-10-13T07:41:00Z"}]}
 ```
 
-Own markup: create `site/snippets/kehai/bubble.php` (Kirby takes it first) and keep the container's data attributes and the two child elements; `$site->kehaiBubble()` says whether there is anything to show.
+Own markup: create `site/snippets/kehai/bubble.php` (Kirby takes it first) and keep the container's data attributes and the two child elements; `$site->kehaiBubble()` says whether to print it (an event to show, or pull mode, which needs the script to call the route).
 
 ### Summary
 
 ```php
 <?php snippet('kehai/summary', ['product' => 'jahreskurs']) ?>
-<?php snippet('kehai/summary', ['product' => 'courses', 'days' => 30, 'min' => 5]) ?>   // a group, own period and minimum
+<?php snippet('kehai/summary', ['product' => 'courses', 'days' => 30, 'min' => 5]) ?>   // a group, own period and minimum; needs kehai.summaryDays ≥ 30
 ```
 
 ```html
 <p class="kehai-summary">In den letzten 7 Tagen wurde „Jahreskurs“ 12-mal gebucht</p>
 ```
+
+A snippet's `days` can be shorter than `kehai.summaryDays`, but not longer than what the fetch reads, `max(maxAge, summaryDays)`: a longer period is shortened to what the data file covers, and the reason is logged once. For a 30-day summary set `kehai.summaryDays` to 30 (and `'days' => 7` where a week is wanted).
 
 Rendered on the server, no script. A page that shows the summary or the bubble stays in Kirby's page cache for 15 minutes at most, so a cached page never keeps an old count. For own markup:
 
@@ -252,6 +256,7 @@ $summary = $site->kehaiSummary('jahreskurs');   // null = show nothing
 {
   "format": 1,
   "generated": "2026-10-13T09:00:12Z",
+  "from": "2026-09-29T09:00:12Z",
   "source": "digistore24",
   "events": [
     {"type": "purchase", "product": "jahreskurs", "at": "2026-10-13T07:41:00Z", "country": "AT"}
@@ -259,7 +264,7 @@ $summary = $site->kehaiSummary('jahreskurs');   // null = show nothing
 }
 ```
 
-Exactly these fields; `country` only with `kehai.country`. `at` is UTC, rounded down to the minute. Reading applies the same rules as writing: an event with any other type, an unknown product key or a malformed time is ignored, and a file with another `format` is refused (nothing shown, logged) rather than guessed at. The file is written atomically (temporary file, then rename).
+Exactly these fields; `country` only with `kehai.country`. Since 1.1.0 the file records the start of the period it covers completely (`from`); the summary never counts further back. A file without it (1.0.0) is assumed to cover this configuration's fetch window; a `from` that is not a valid time refuses the file. `at` is UTC, rounded down to the minute. Reading applies the same rules as writing: an event with any other type, an unknown product key or a malformed time is ignored, and a file with another `format` is refused (nothing shown, logged) rather than guessed at. The file is written atomically (temporary file, then rename).
 
 `storage/` lies next to `public/` in the usual Kirby setup and is not reachable through the web. In a setup without a `public/` folder, keep the file outside the document root or deny `storage/` in the server configuration — the file holds nothing the route does not show anyway, but it need not be public.
 
