@@ -63,6 +63,12 @@ try {
     holds(str_contains($out, 'covers 2 days (from 2026-10-10 10:30 UTC)') && str_contains($out, 'The data file covers only 2 days: summaries are shortened to 2 days (the source\'s answer was cut; see kehai fetch).'),
         'a file that covers less than summaryDays: the coverage and a note (' . $out . ')');
     expect(Check::EXIT_OK, $code, 'a shortened coverage is a note, not a problem');
+    holds(str_contains($out, 'jahreskurs: 1 in the last 14 days (bubble), 1 in the last 2 days (summary, below 3, not shown)'), 'a shortened coverage: the per-product line counts the shortened period (' . $out . ')');
+    $write($now->modify('-10 minutes'));
+    [$code, $out] = $check($config);
+    holds($code === Check::EXIT_OK && str_contains($out, 'covers 0 days (from 2026-10-13 09:30 UTC)') && str_contains($out, 'The data file covers less than a day: summaries show nothing')
+        && str_contains($out, 'jahreskurs: 1 in the last 14 days (bubble), summary not shown (the data file covers less than a day)') && str_contains($out, 'group kurse: summary not shown'),
+        'a file that covers less than a day: the note and the lines say the summary shows nothing (' . $out . ')');
     $write($now->modify('-7 days'));
     holds(!str_contains($check($config)[1], 'covers only'), 'coverage equal to summaryDays: no note');
 

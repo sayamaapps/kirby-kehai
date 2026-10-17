@@ -78,6 +78,7 @@ final class Check
         $say($config['file'], 1);
         $read = Events::read($config['file'], true, null);
         $events = [];
+        $covered = Config::window($config);
         if ($read['error'] !== null) {
             $say($read['error'], 1);
             $problems[] = 'The data file is ' . ($read['error'] === 'missing' ? 'missing' : 'unusable (' . $read['error'] . ')') . ': nothing is shown. Run `kehai fetch` or check the upload.';
@@ -93,7 +94,9 @@ final class Check
                 $notes[] = $read['dropped'] . ' entries in the data file are not valid events and are ignored.';
             }
             if ($read['from'] !== null && $covered < $config['summaryDays']) {
-                $notes[] = "The data file covers only $covered days: summaries are shortened to $covered days (the source's answer was cut; see kehai fetch).";
+                $notes[] = $covered < 1
+                    ? "The data file covers less than a day: summaries show nothing (the source's answer was cut; see kehai fetch)."
+                    : "The data file covers only $covered days: summaries are shortened to $covered days (the source's answer was cut; see kehai fetch).";
             }
             if ($age > $config['maxStale'] * 3600) {
                 $problems[] = 'The data file is older than kehai.maxStale (' . $config['maxStale'] . ' hours): nothing is shown until the next successful fetch.';
@@ -116,18 +119,17 @@ final class Check
             return count(array_filter($events, fn (array $e) => $e['product'] === $key
                 && Events::time($e)->getTimestamp() >= $oldest && Events::time($e)->getTimestamp() <= $limit));
         };
+        $summaryDays = min($config['summaryDays'], $covered); // the page shortens the summary to what the file covers
         $bubbleTotal = 0;
         foreach ($keys as $key) {
             $bubble = $within($key, $config['maxAge']);
-            $summary = $within($key, $config['summaryDays']);
+            $summary = $within($key, max(1, $summaryDays));
             $bubbleTotal += $bubble;
-            $say("$key: $bubble in the last {$config['maxAge']} days (bubble), $summary in the last {$config['summaryDays']} days (summary"
-                . ($summary >= $config['summaryMin'] ? ', shown' : ', below ' . $config['summaryMin'] . ', not shown') . ')', 1);
+            $say("$key: $bubble in the last {$config['maxAge']} days (bubble), " . self::summaryLine($summary, $summaryDays, $config['summaryMin']), 1);
         }
         foreach ($config['groups'] as $name => $group) {
-            $summary = array_sum(array_map(fn (string $key) => $within($key, $config['summaryDays']), $group['products']));
-            $say("group $name: $summary in the last {$config['summaryDays']} days (summary"
-                . ($summary >= $config['summaryMin'] ? ', shown' : ', below ' . $config['summaryMin'] . ', not shown') . ')', 1);
+            $summary = array_sum(array_map(fn (string $key) => $within($key, max(1, $summaryDays)), $group['products']));
+            $say("group $name: " . self::summaryLine($summary, $summaryDays, $config['summaryMin']), 1);
         }
         $unknown = array_count_values(array_column(array_filter($events, fn (array $e) => !in_array($e['product'], $keys, true)), 'product'));
         ksort($unknown);
@@ -154,6 +156,15 @@ final class Check
             }
         }
         return $problems === [] ? self::EXIT_OK : self::EXIT_PROBLEM;
+    }
+
+    /** "3 in the last 7 days (summary, shown)" — or that the summary shows nothing, since the file covers less than a day. */
+    private static function summaryLine(int $count, int $days, int $min): string
+    {
+        if ($days < 1) {
+            return 'summary not shown (the data file covers less than a day)';
+        }
+        return "$count in the last $days days (summary" . ($count >= $min ? ', shown' : ", below $min, not shown") . ')';
     }
 
     private static function age(int $seconds): string

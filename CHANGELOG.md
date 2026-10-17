@@ -12,7 +12,8 @@ All notable changes to this project are documented here. Versions follow
   would show other numbers after a routine update.
 - **A change to the data file format** increases `format` and ships with a
   reader for the old format, so a site never shows nothing between the update
-  and the next fetch.
+  and the next fetch. An optional field that older readers ignore (such as
+  `from`) needs no new `format`.
 - A change to the privacy text (`DATENSCHUTZ.md` / `PRIVACY.md`) is marked
   **[privacy text]**. Every site using the plugin must then review its privacy
   policy.
@@ -30,13 +31,14 @@ All notable changes to this project are documented here. Versions follow
   taken to cover this configuration's fetch window. For a 30-day summary set
   `kehai.summaryDays` to 30.
 - **A cut answer is no longer shown as an exact count.** When the source's
-  answer is cut (more than 20 × 500 orders in the window) or more than 2,000
-  purchases count, the file's `from` moves to the first minute that is
-  complete, the fetch output says so, `kehai check` reports the covered days,
-  and summaries shorten to them. The request asks Digistore24 for the
-  configured product ids only (`search[product_id]`), newest first
-  (`sort_by=date`, `sort_order=desc`), so a cut drops the oldest orders,
-  never the newest; the allow list stays the gate locally.
+  answer is cut (20 full pages of 500 orders) or more than 2,000 purchases
+  count, the file's `from` moves to the first minute that is complete, the
+  fetch output says so, `kehai check` reports the covered days, and summaries
+  shorten to them. The request asks Digistore24 for the configured product
+  ids only (`search[product_id]`), newest first (`sort_by=date`,
+  `sort_order=desc`), so a cut drops the oldest orders, never the newest; a
+  cut answer that is not newest first covers nothing. The allow list stays
+  the gate locally.
 - **Pull mode starts again after an empty data state.** In pull mode the
   fetch is triggered by the bubble script's call of `/kehai/events.json`
   (a page render triggers it only on PHP-FPM and LiteSpeed). With the data
@@ -53,7 +55,11 @@ All notable changes to this project are documented here. Versions follow
 ### Changed
 
 - Data file: the new field `from` (UTC) after `generated`. `format` stays 1:
-  a 1.0.0 file is read as before, and 1.0.0 reads a 1.1.0 file.
+  a 1.0.0 file is read as before, and 1.0.0 reads a 1.1.0 file. A file
+  without `from` is assumed to cover this configuration's fetch window; if
+  `maxAge` or `summaryDays` was raised since that fetch, the next fetch sets
+  it right. A `from` that is not a valid time refuses the file.
+- User agent `kirby-kehai/1.1`.
 - `kehai fetch` prints `window: 14 days asked, N days covered` when the file
   covers less than asked; `kehai check` prints the covered period and the
   fetch window.

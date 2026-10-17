@@ -163,7 +163,7 @@ App::plugin('sayamaapps/kehai', [
 
         /**
          * Whether the snippet prints the bubble: there is a real event to show
-         * — or pull mode is on. In pull mode the container and the script are
+         * — or pull mode is on and has its key. In pull mode the container and the script are
          * printed even while there is nothing to show, since the script's call
          * of /kehai/events.json is what triggers the fetch (on PHP-FPM and
          * LiteSpeed a page render does too); the visitor sees nothing until
@@ -182,7 +182,8 @@ App::plugin('sayamaapps/kehai', [
             $now = new DateTimeImmutable('now');
             $keys = $products === null ? null : array_values(array_intersect(Config::keys($config), $products));
             $shown = Display::bubble(Events::usable($config, $now)['events'], $config, $now, I18n::language(), $keys) !== [];
-            return $shown || $config['pull'];
+            // In pull mode the markup is printed anyway, so the script calls the route — when there is a key to fetch with.
+            return $shown || ($config['pull'] && Options::key(Options::secretsFile($kirby)) !== null);
         },
     ],
 

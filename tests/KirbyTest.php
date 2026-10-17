@@ -241,6 +241,7 @@ try {
     @unlink(Pull::marker($file));
     [, , $log] = $route($pull);
     holds(!Pull::pending() && str_contains($log, 'kehai.pull is on, but site/config/kehai.php has no key'), 'pull mode without key: logged, nothing scheduled');
+    expect('', trim((string) $kirby($pull)->snippet('kehai/bubble', ['products' => ['nope']], true)), 'pull mode without a key: nothing to show, nothing printed (the route could not fetch anyway)');
     Pull::$transports = null;
 
     // ---- 7. A site's own snippet wins ------------------------------------------------------------------

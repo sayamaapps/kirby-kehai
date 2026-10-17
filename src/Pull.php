@@ -121,7 +121,8 @@ final class Pull
     /**
      * A transport for the whole pull: every request gets only the whole
      * seconds that are left of TIMEOUT; once they are used up it throws
-     * without a request. The overshoot is under one second.
+     * without a request. The overshoot is under one second with curl (the
+     * stream fallback's timeout is per read).
      */
     private static function withDeadline(float $start): Closure
     {

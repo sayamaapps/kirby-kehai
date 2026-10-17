@@ -172,6 +172,21 @@ try {
     $unreadable = $fullPages(1);
     $unreadable[Digistore24::MAX_PAGES - 1] = $ok(json_encode(['result' => 'success', 'data' => ['purchase_list' => array_fill(0, Digistore24::PAGE_SIZE, ['id' => 'x', 'created_at' => 'soon'])]]));
     expect('2026-09-30T18:01:00Z', $adapter($unreadable)->events($from, $now)['from']->setTimezone($utc)->format('Y-m-d\TH:i:s\Z'), 'cut: an entry without a readable created_at is ignored when looking for the oldest');
+    // The boundary is trusted only when the answer is newest first; otherwise what fell off is unknown and the file covers nothing.
+    $mutate = function (array $script, int $page, int $index, array $change) use ($ok): array {
+        $body = json_decode($script[$page - 1]['body'], true);
+        $body['data']['purchase_list'][$index] = array_merge($body['data']['purchase_list'][$index], $change);
+        $script[$page - 1] = $ok(json_encode($body));
+        return $script;
+    };
+    $nowZ = $now->format('Y-m-d\TH:i:s\Z');
+    $reversed = $adapter(array_reverse($fullPages(1)))->events($from, $now);
+    expect($nowZ, $reversed['from']->setTimezone($utc)->format('Y-m-d\TH:i:s\Z'), 'cut, oldest first (the sort was ignored): nothing is known to be complete, "from" is now');
+    holds(in_array('the source cut its answer after 10000 orders (MAX_PAGES × PAGE_SIZE): the file covers the last 0 days only', $reversed['notes'], true), 'cut, oldest first: the note says 0 days');
+    expect($nowZ, $adapter($mutate($fullPages(1), 5, 3, ['created_at' => '2026-06-01 10:00:00']))->events($from, $now)['from']->setTimezone($utc)->format('Y-m-d\TH:i:s\Z'), 'cut, an old order in the middle (not newest first): "from" is now');
+    expect($from->format('c'), $adapter($mutate($fullPages(1), Digistore24::MAX_PAGES, Digistore24::PAGE_SIZE - 1, ['created_at' => '2026-06-01 10:00:00']))->events($from, $now)['from']->format('c'), 'cut, the last order received was created before the window: every order of the window came along, "from" as asked');
+    $blind = array_fill(0, Digistore24::MAX_PAGES, $ok(json_encode(['result' => 'success', 'data' => ['purchase_list' => array_fill(0, Digistore24::PAGE_SIZE, ['id' => 'x', 'created_at' => 'soon'])]])));
+    expect($nowZ, $adapter($blind)->events($from, $now)['from']->setTimezone($utc)->format('Y-m-d\TH:i:s\Z'), 'cut, no readable created_at at all: "from" is now');
 
     // ---- kehai fetch -----------------------------------------------------------
     $file = $config['file'];

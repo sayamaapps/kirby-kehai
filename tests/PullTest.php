@@ -96,13 +96,13 @@ try {
         return $tick;
     };
     // Every request takes two seconds on the fake clock; the answers are served in order.
-    $slow = function (array $queue) use (&$tick, &$slowCalls, &$slowTimeouts): void {
+    $slow = function (array $queue, float $step = 2.0) use (&$tick, &$slowCalls, &$slowTimeouts): void {
         $answers = $queue;
-        Pull::$transports = function (int $timeout) use (&$answers, &$tick, &$slowCalls, &$slowTimeouts): Closure {
+        Pull::$transports = function (int $timeout) use (&$answers, &$tick, &$slowCalls, &$slowTimeouts, $step): Closure {
             $slowTimeouts[] = $timeout;
-            return function () use (&$answers, &$tick, &$slowCalls): array {
+            return function () use (&$answers, &$tick, &$slowCalls, $step): array {
                 $slowCalls++;
-                $tick += 2.0;
+                $tick += $step;
                 return array_shift($answers);
             };
         };
@@ -134,6 +134,15 @@ try {
     expect('written', $outcome, "two pages of two seconds each fit into the deadline ($log)");
     expect([5, 3], $slowTimeouts, 'two pages: the second request gets the three seconds that are left');
     expect(2, $slowCalls, 'two pages: two requests');
+
+    touch(Pull::marker($file), $at('-1 hour')->getTimestamp());
+    $tick = 200.0;
+    $slowCalls = 0;
+    $slowTimeouts = [];
+    $slow(array_fill(0, 3, ['status' => 200, 'body' => $pageBody($fullPage)]), 4.5);
+    Log::forget();
+    [$outcome] = logged(fn () => Pull::run($config, $key, $now));
+    expect(['failed', [5, 1], 2], [$outcome, $slowTimeouts, $slowCalls], 'half a second left is rounded up to one (never 0 = no limit); the third page is refused');
     Pull::$clock = null;
 
     // later(): remembered, not run; flush() runs it (at shutdown, after the answer) with the real clock.

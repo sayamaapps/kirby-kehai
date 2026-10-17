@@ -25,8 +25,9 @@ use DateTimeZone;
  * requested window start, or later when an answer was cut (the source's
  * page limit, MAX_EVENTS). A summary never counts further back than `from`.
  * A 1.0.0 file has none and is assumed to cover the fetch window of the
- * configuration that reads it (covered()). The format stays 1: 1.0.0 reads
- * a 1.1.0 file and ignores the field.
+ * configuration that reads it (covered()); a `from` that is not a valid
+ * time refuses the file, like a bad `generated`. The format stays 1: 1.0.0
+ * reads a 1.1.0 file and ignores the field.
  *
  * An event has exactly these fields. `type` is one of TYPES, `product` a
  * product key from the site's configuration (never the source's id or
@@ -174,6 +175,13 @@ final class Events
         if ($generated === null || !is_array($data['events'] ?? null)) {
             return ['error' => 'no valid "generated" time or "events" list'] + $empty;
         }
+        $from = null;
+        if (array_key_exists('from', $data)) {
+            $from = self::parse($data['from']);
+            if ($from === null) {
+                return ['error' => 'no valid "from" time'] + $empty;
+            }
+        }
         $events = [];
         $dropped = 0;
         foreach ($data['events'] as $event) {
@@ -184,7 +192,7 @@ final class Events
         return [
             'error'     => null,
             'generated' => $generated,
-            'from'      => self::parse($data['from'] ?? null),
+            'from'      => $from,
             'source'    => is_string($data['source'] ?? null) ? Text::plain($data['source'], 40) : null,
             'events'    => $events,
             'dropped'   => $dropped,

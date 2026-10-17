@@ -117,7 +117,7 @@ try {
     foreach (['yesterday', '2026-09-29', '2026-02-31T10:00:00Z', 1759140000, ['x']] as $bad) {
         file_put_contents($tmp . '/from.json', json_encode(['from' => $bad] + $withFrom));
         $readBad = Events::read($tmp . '/from.json');
-        holds($readBad['error'] === null && $readBad['from'] === null, 'read: a malformed "from" is null, the file is still read: ' . json_encode($bad));
+        holds($readBad['error'] === 'no valid "from" time' && $readBad['events'] === [], 'read: a malformed "from" refuses the file rather than guessing: ' . json_encode($bad));
     }
 
     // ---- usable(): fresh, configured, not in the future ------------------------

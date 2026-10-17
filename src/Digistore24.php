@@ -51,8 +51,10 @@ use DateTimeZone;
  * locally). A regular answer is at most MAX_PAGES × PAGE_SIZE orders; when
  * the last page is still full the answer was cut. Newest first, what falls
  * off is the oldest, so the result's `from` moves to the minute after the
- * oldest order received, and the notes say so. The data file then covers a
- * shorter period, and the summary never claims more.
+ * oldest order received (boundary()), and the notes say so. The data file
+ * then covers a shorter period, and the summary never claims more. A cut
+ * answer that is not newest first covers nothing: the source ignored the
+ * sort, and what fell off is unknown.
  *
  * The rules are deliberately strict: a purchase that does not count is
  * never shown, one that does not clearly count is not shown either.
@@ -99,20 +101,45 @@ final class Digistore24 implements Source
         }
         $result = $this->convert($purchases, $from, $now) + ['from' => $from];
         if ($cut) {
-            $oldest = null;
-            foreach ($purchases as $purchase) {
-                $time = is_array($purchase) ? self::time($purchase['created_at'] ?? null, $zone) : null;
-                $oldest = $time !== null && ($oldest === null || $time < $oldest) ? $time : $oldest;
-            }
-            $after = $oldest === null ? null : Events::parse(Events::minute($oldest))?->modify('+60 seconds');
-            if ($after !== null && $after > $from) {
-                $result['from'] = $after;
-            }
+            $result['from'] = self::boundary($purchases, $from, $now, $zone);
             // The first note is the count line; the cut belongs right after it.
             array_splice($result['notes'], 1, 0, 'the source cut its answer after ' . self::MAX_PAGES * self::PAGE_SIZE . ' orders (MAX_PAGES × PAGE_SIZE): the file covers the last '
                 . max(0, intdiv($now->getTimestamp() - $result['from']->getTimestamp(), 86400)) . ' days only');
         }
         return $result;
+    }
+
+    /**
+     * Where a cut answer is complete from. The request asks for newest
+     * first, so the answer is the newest MAX_PAGES × PAGE_SIZE orders —
+     * if the source honoured that. Every readable `created_at` must
+     * therefore be in non-increasing order; otherwise nothing is known to
+     * be complete ($now, the file covers nothing). An order created before
+     * the window among them means every order of the window came along
+     * ($from). Else the boundary is the minute after the oldest order
+     * received. No readable time at all: $now.
+     */
+    private static function boundary(array $purchases, DateTimeImmutable $from, DateTimeImmutable $now, DateTimeZone $zone): DateTimeImmutable
+    {
+        $oldest = null;
+        foreach ($purchases as $purchase) {
+            $time = is_array($purchase) ? self::time($purchase['created_at'] ?? null, $zone) : null;
+            if ($time === null) {
+                continue;
+            }
+            if ($oldest !== null && $time > $oldest) {
+                return $now;
+            }
+            $oldest = $time;
+        }
+        if ($oldest === null) {
+            return $now;
+        }
+        if ($oldest < $from) {
+            return $from;
+        }
+        $minute = $oldest->setTimezone(new DateTimeZone('UTC'));
+        return $minute->setTime((int) $minute->format('H'), (int) $minute->format('i'))->modify('+60 seconds');
     }
 
     /**
