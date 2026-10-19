@@ -4,7 +4,7 @@
     "type": "kirby-plugin",
     "license": "MIT",
     "keywords": ["kirby", "kirby-plugin", "kirby-5", "social-proof", "digistore24", "privacy", "gdpr", "csp"],
-    "homepage": "https://github.com/simsimmal/kirby-kehai",
+    "homepage": "https://github.com/sayamaapps/kirby-kehai",
     "authors": [
         {
             "name": "Simon Räder",
@@ -12,8 +12,8 @@
         }
     ],
     "support": {
-        "issues": "https://github.com/simsimmal/kirby-kehai/issues",
-        "source": "https://github.com/simsimmal/kirby-kehai"
+        "issues": "https://github.com/sayamaapps/kirby-kehai/issues",
+        "source": "https://github.com/sayamaapps/kirby-kehai"
     },
     "require": {
         "php": "^8.2",
