@@ -57,6 +57,6 @@ jobs:
           if grep -nE 'localStorage|sessionStorage|document\.cookie|indexedDB|\.style\b|innerHTML' assets/kehai.js; then
             echo "::error::kehai.js must not store anything, set inline styles or inject HTML"; exit 1
           fi
-          if grep -nPi 'https?://(?!github\.com/simsimmal)' assets/kehai.js assets/kehai.css; then
+          if grep -nPi 'https?://(?!github\.com/sayamaapps)' assets/kehai.js assets/kehai.css; then
             echo "::error::kehai.js and kehai.css must not name any address except the project page"; exit 1
           fi

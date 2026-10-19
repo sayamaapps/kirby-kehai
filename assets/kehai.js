@@ -1,5 +1,5 @@
 /*!
- * Kehai — honest social proof for Kirby CMS. https://github.com/simsimmal/kirby-kehai
+ * Kehai — honest social proof for Kirby CMS. https://github.com/sayamaapps/kirby-kehai
  *
  * Reads the [data-kehai] container printed by the kehai/bubble snippet,
  * waits data-kehai-delay seconds, loads the entries from this site's
