@@ -51,6 +51,29 @@ try {
     expect(['2026-10-13T09:00:00Z', '2026-10-13T07:41:00Z', '2026-10-10T10:00:00Z'], array_column($built['events'], 'at'), 'build: newest first, invalid dropped');
     holds(!str_contains(json_encode($built), 'Annegret') && !str_contains(json_encode($built), 'secret'), 'build: extra fields of an adapter never reach the file');
     expect(Events::MAX_EVENTS, count(Events::build(array_fill(0, Events::MAX_EVENTS + 5, $event('jahreskurs', '-1 hour')), $now, 'x', false)['events']), 'build: limited to MAX_EVENTS');
+    expect(['format', 'generated', 'source', 'events'], array_keys($built), 'build: without $from there is no "from" (a 1.0.0 file)');
+
+    // `from`: the start of the period the file covers completely.
+    $asked = $now->modify('-14 days');
+    $withFrom = Events::build([$event('jahreskurs', '-1 hour')], $now, 'digistore24', false, null, $asked);
+    expect(['format', 'generated', 'from', 'source', 'events'], array_keys($withFrom), 'build: "from" right after "generated"');
+    expect('2026-09-29T10:00:00Z', $withFrom['from'], 'build: "from" as asked, UTC with seconds');
+    expect('2026-10-13T10:00:00Z', Events::build([], $now, 'x', false, null, $now->modify('+1 hour'))['from'], 'build: "from" is never later than "generated"');
+    expect('2026-09-29T10:00:00Z', Events::build([], $now, 'x', false, null, new DateTimeImmutable('2026-09-29T12:00:00+02:00'))['from'], 'build: "from" written in UTC');
+    // The MAX_EVENTS cut: 2005 events one minute apart, the newest 2000 stay; "from" moves to the minute after the oldest kept.
+    $many = [];
+    for ($i = 0; $i < Events::MAX_EVENTS + 5; $i++) {
+        $many[] = $event('jahreskurs', '-' . ($i + 1) . ' minutes');
+    }
+    $cut = Events::build($many, $now, 'x', false, null, $asked);
+    expect(Events::MAX_EVENTS, count($cut['events']), 'build: 2005 events, 2000 kept');
+    $oldestKept = end($cut['events'])['at'];
+    expect('2026-10-12T00:40:00Z', $oldestKept, 'build: the oldest kept event is the 2000th newest');
+    expect('2026-10-12T00:41:00Z', $cut['from'], 'build: the 2000 cut moves "from" to the minute after the oldest kept event');
+    expect('2026-10-12T00:41:00Z', Events::build($many, $now, 'x', false)['from'], 'build: the cut sets "from" also when none was given');
+    $recent = Events::build($many, $now, 'x', false, null, $now->modify('-10 minutes'));
+    expect('2026-10-13T09:50:00Z', $recent['from'], 'build: a "from" later than the cut stays');
+    expect($asked->format('Y-m-d\TH:i:s\Z'), Events::build(array_slice($many, 0, Events::MAX_EVENTS), $now, 'x', false, null, $asked)['from'], 'build: exactly MAX_EVENTS events are no cut');
 
     // ---- write(): atomic ---------------------------------------------------------
     Events::write($file, $data([$event('jahreskurs', '-1 hour')]));
@@ -88,28 +111,49 @@ try {
     file_put_contents($tmp . '/mixed.json', json_encode(['format' => 1, 'generated' => '2026-10-13T09:00:00Z', 'events' => [$full, ['type' => 'purchase'], 'x']]));
     $read = Events::read($tmp . '/mixed.json', false);
     expect([[Events::clean($full, false)], 2], [$read['events'], $read['dropped']], 'read cleans every event and counts the invalid ones');
+    expect(null, $read['from'], 'read: a 1.0.0 file has no "from"');
+    file_put_contents($tmp . '/from.json', json_encode($withFrom));
+    expect('2026-09-29T10:00:00Z', Events::read($tmp . '/from.json')['from']?->format('Y-m-d\TH:i:s\Z'), 'read: "from" as a time');
+    foreach (['yesterday', '2026-09-29', '2026-02-31T10:00:00Z', 1759140000, ['x']] as $bad) {
+        file_put_contents($tmp . '/from.json', json_encode(['from' => $bad] + $withFrom));
+        $readBad = Events::read($tmp . '/from.json');
+        holds($readBad['error'] === 'no valid "from" time' && $readBad['events'] === [], 'read: a malformed "from" refuses the file rather than guessing: ' . json_encode($bad));
+    }
 
     // ---- usable(): fresh, configured, not in the future ------------------------
     Log::forget();
     Events::write($file, $data([$event('jahreskurs', '-1 hour'), $event('unbekannt', '-1 hour'), $event('wochenendkurs', '+10 minutes'), $event('wochenendkurs', '+4 minutes')]));
     [$usable, $log] = logged(fn () => Events::usable($config, $now));
-    expect(['2026-10-13T10:04:00Z', '2026-10-13T09:00:00Z'], array_column($usable, 'at'), 'usable: unknown product and far future dropped, a few minutes of clock skew tolerated');
+    expect(['events', 'from'], array_keys($usable), 'usable: events and from');
+    expect(['2026-10-13T10:04:00Z', '2026-10-13T09:00:00Z'], array_column($usable['events'], 'at'), 'usable: unknown product and far future dropped, a few minutes of clock skew tolerated');
+    expect(null, $usable['from'], 'usable: a file without "from" gives null');
     expect('', $log, 'usable: nothing logged when fine');
+    Events::write($file, Events::build([$event('jahreskurs', '-1 hour')], $now->modify('-10 minutes'), 'digistore24', true, null, $asked));
+    expect('2026-09-29T10:00:00Z', Events::usable($config, $now)['from']?->format('Y-m-d\TH:i:s\Z'), 'usable: "from" of the file');
+    Events::write($file, $data([$event('jahreskurs', '-1 hour'), $event('unbekannt', '-1 hour'), $event('wochenendkurs', '+10 minutes'), $event('wochenendkurs', '+4 minutes')]));
 
     // Too old: nothing at all, and a log line.
     Events::write($file, $data([$event('jahreskurs', '-1 hour')], '-49 hours'));
     [$usable, $log] = logged(fn () => Events::usable($config, $now));
-    expect([], $usable, 'file older than 48 hours: nothing');
+    expect(['events' => [], 'from' => null], $usable, 'file older than 48 hours: nothing');
     holds(str_contains($log, 'Kehai: nothing shown, the data file ' . $file . ' was last updated 49 hours ago (kehai.maxStale is 48)'), 'stale file is logged');
     [, $log] = logged(fn () => Events::usable($config, $now));
     expect('', $log, 'the same log line only once per process');
     Events::write($file, $data([$event('jahreskurs', '-1 hour')], '-47 hours'));
-    expect(1, count(Events::usable($config, $now)), '47 hours old: still used');
-    expect([], logged(fn () => Events::usable(testConfig($tmp, ['maxStale' => 12]), $now))[0], 'kehai.maxStale 12');
+    expect(1, count(Events::usable($config, $now)['events']), '47 hours old: still used');
+    expect([], logged(fn () => Events::usable(testConfig($tmp, ['maxStale' => 12]), $now))[0]['events'], 'kehai.maxStale 12');
     unlink($file);
     Log::forget();
     [$usable, $log] = logged(fn () => Events::usable($config, $now));
-    holds($usable === [] && str_contains($log, 'is missing'), 'missing file: nothing, logged');
+    holds($usable === ['events' => [], 'from' => null] && str_contains($log, 'is missing'), 'missing file: nothing, logged');
+
+    // ---- covered(): whole days the file covers completely ------------------------------------
+    expect(14, Events::covered(null, $config, $now), 'covered: no "from" (1.0.0) assumes the fetch window, 14 days');
+    expect(30, Events::covered(null, testConfig($tmp, ['summaryDays' => 30]), $now), 'covered: no "from" assumes max(maxAge, summaryDays)');
+    expect(14, Events::covered(new DateTimeImmutable('2026-09-29T10:00:00Z'), $config, $now), 'covered: 14 days');
+    expect(3, Events::covered($now->modify('-3 days -12 hours'), $config, $now), 'covered: 3.5 days are 3 whole days');
+    expect(0, Events::covered($now->modify('-10 minutes'), $config, $now), 'covered: 10 minutes are no day');
+    expect(0, Events::covered($now->modify('+1 hour'), $config, $now), 'covered: never negative');
 
     // ---- The bubble entries ------------------------------------------------------------
     I18n::setLanguage('de');
@@ -151,12 +195,31 @@ try {
     expect(null, Display::summary([], $config, $now, 'de', 'jahreskurs'), 'summary: none — nothing (never "0")');
     expect(4, Display::summary($three, $config, $now, 'de', 'kurse')['count'], 'summary of a group');
     expect('In den letzten 7 Tagen wurde „unsere Kurse“ 4-mal gebucht', Display::summary($three, $config, $now, 'de', 'kurse')['text'], 'group label');
-    expect(4, Display::summary($three, $config, $now, 'de', 'jahreskurs', 30)['count'], 'summary: own period');
+    $month = $now->modify('-30 days');
+    expect([4, 30], [Display::summary($three, $config, $now, 'de', 'jahreskurs', 30, null, $month)['count'], Display::summary($three, $config, $now, 'de', 'jahreskurs', 30, null, $month)['days']], 'summary: own period, when the file covers it');
+    expect(7, Display::summary($three, $config, $now, 'de', 'jahreskurs', null, null, $month)['days'], 'summary: a file that covers more than summaryDays changes nothing');
     expect(null, Display::summary($three, $config, $now, 'de', 'jahreskurs', null, 4), 'summary: own minimum');
     expect('In den letzten 7 Tagen wurde „Jahreskurs“ einmal gebucht', Display::summary([$event('jahreskurs', '-1 hour')], $config, $now, 'de', 'jahreskurs', null, 1)['text'], 'summary: singular');
     expect('In den letzten 24 Stunden wurde „Jahreskurs“ einmal gebucht', Display::summary($three, $config, $now, 'de', 'jahreskurs', 1, 1)['text'], 'summary: one day reads "24 hours"');
     [$none, $log] = logged(fn () => Display::summary($three, $config, $now, 'de', 'nothing'));
     holds($none === null && str_contains($log, 'neither a product key nor a group'), 'summary: unknown name, nothing, logged');
+
+    // KEH-002: a period longer than the file covers is shortened, and says so.
+    Log::forget();
+    [$short, $log] = logged(fn () => Display::summary($three, $config, $now, 'de', 'jahreskurs', 30, null, $now->modify('-14 days')));
+    expect([4, 14, 'In den letzten 14 Tagen wurde „Jahreskurs“ 4-mal gebucht'], [$short['count'], $short['days'], $short['text']], 'summary: 30 days asked, the file covers 14: the result says 14');
+    holds(str_contains($log, 'the summary for "jahreskurs" asks for 30 days, but the data file covers 14') && str_contains($log, 'showing 14'), 'summary: the shortening is logged');
+    Log::forget();
+    [$old, $log] = logged(fn () => Display::summary($three, $config, $now, 'de', 'jahreskurs', 30));
+    expect(14, $old['days'], 'summary: a file without "from" (1.0.0) covers the fetch window: 30 days become 14');
+    holds(str_contains($log, 'asks for 30 days, but the data file covers 14'), 'summary: logged for a 1.0.0 file too');
+    $wider = testConfig($tmp, ['summaryDays' => 30]);
+    expect(30, Display::summary($three, $wider, $now, 'de', 'jahreskurs')['days'], 'summary: with kehai.summaryDays 30 the 1.0.0 file covers 30 days');
+    Log::forget();
+    [$none, $log] = logged(fn () => Display::summary($three, $config, $now, 'de', 'jahreskurs', null, 1, $now->modify('-10 minutes')));
+    holds($none === null && str_contains($log, 'the summary for "jahreskurs" shows nothing, the data file covers less than a day'), 'summary: a file that covers less than a day shows nothing, logged');
+    $oneDay = logged(fn () => Display::summary($three, $config, $now, 'de', 'jahreskurs', null, 1, $now->modify('-1 day')))[0];
+    expect([1, 'In den letzten 24 Stunden wurde „Jahreskurs“ einmal gebucht'], [$oneDay['days'], $oneDay['text']], 'summary: a file that covers one day shows 24 hours');
 
     // ---- Configuration ------------------------------------------------------------------
     $defaults = Config::defaults($tmp);

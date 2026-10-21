@@ -17,7 +17,7 @@ final class Display
     /**
      * Entries for the bubble, newest first, at most `max`.
      *
-     * @param list<array> $events  Events::usable()
+     * @param list<array> $events  Events::usable()['events']
      * @param list<string>|null $keys only these product keys; null = all configured
      * @return list<array{text:string, at:string}>
      */
@@ -60,11 +60,16 @@ final class Display
 
     /**
      * The summary for a product key or a group name, or null (= show
-     * nothing): unknown name, or fewer events than the minimum.
+     * nothing): unknown name, a data file that covers less than a day, or
+     * fewer events than the minimum.
+     *
+     * The period is cut to what the data file covers (`$from`, see
+     * Events::covered()): the summary never counts further back than the
+     * data goes, and says the shortened period. The reason is logged.
      *
      * @return array{count:int, days:int, product:string, text:string}|null
      */
-    public static function summary(array $events, array $config, DateTimeImmutable $now, string $language, string $name, ?int $days = null, ?int $min = null): ?array
+    public static function summary(array $events, array $config, DateTimeImmutable $now, string $language, string $name, ?int $days = null, ?int $min = null, ?DateTimeImmutable $from = null): ?array
     {
         $products = $config['groups'][$name]['products'] ?? (in_array($name, Config::keys($config), true) ? [$name] : null);
         if ($products === null) {
@@ -72,6 +77,16 @@ final class Display
             return null;
         }
         $days = max(1, min(90, $days ?? $config['summaryDays']));
+        $covered = Events::covered($from, $config, $now);
+        if ($covered < 1) {
+            Log::error('Kehai: the summary for "' . $name . '" shows nothing, the data file covers less than a day');
+            return null;
+        }
+        if ($days > $covered) {
+            Log::error('Kehai: the summary for "' . $name . '" asks for ' . $days . ' days, but the data file covers ' . $covered
+                . ' (the fetch reads max(kehai.maxAge, kehai.summaryDays) days); showing ' . $covered);
+            $days = $covered;
+        }
         $min = max(1, $min ?? $config['summaryMin']);
         $oldest = $now->getTimestamp() - $days * 86400;
         $count = 0;

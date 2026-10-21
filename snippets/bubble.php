@@ -9,7 +9,8 @@
  *   <?php snippet('kehai/bubble', ['products' => ['jahreskurs']]) ?>   (only these product keys)
  *
  * Prints nothing unless Kehai and the bubble are switched on and there is a
- * real event to show. Otherwise: the stylesheet (unless `kehai.css` is
+ * real event to show — in pull mode the container and the script are printed
+ * even then, see kehaiBubble(). Otherwise: the stylesheet (unless `kehai.css` is
  * false), an empty container fixed to a corner and the script — both files
  * from this site, no inline script, no style attribute. The script loads
  * the entries from /kehai/events.json after `kehai.delay` seconds, shows at

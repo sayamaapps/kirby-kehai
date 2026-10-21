@@ -1,5 +1,5 @@
 /*!
- * Kehai — the bubble. https://github.com/simsimmal/kirby-kehai
+ * Kehai — the bubble. https://github.com/sayamaapps/kirby-kehai
  *
  * Fixed to a corner, so it never moves the page (no layout shift). Empty
  * and invisible until the script adds .kehai-open. Colours and spacing are

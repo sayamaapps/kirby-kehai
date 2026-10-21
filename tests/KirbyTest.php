@@ -28,12 +28,11 @@ $products = [
 $on = ['kehai.active' => true, 'kehai.products' => $products, 'kehai.bubble' => true, 'kehai.summary' => true];
 $minute = fn (string $ago) => Events::minute(new DateTimeImmutable($ago));
 /** Writes the data file as `kehai fetch` would — plus fields a tampered file might carry. */
-$writeFile = function (array $events, string $generated = '-10 minutes') use ($file): void {
+$writeFile = function (array $events, string $generated = '-10 minutes', ?string $from = '-14 days') use ($file): void {
+    $utc = fn (string $time) => (new DateTimeImmutable($time))->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z');
     @mkdir(dirname($file), 0700, true);
-    file_put_contents($file, json_encode([
-        'format' => 1, 'generated' => (new DateTimeImmutable($generated))->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z'),
-        'source' => 'digistore24', 'events' => $events,
-    ]));
+    file_put_contents($file, json_encode(['format' => 1, 'generated' => $utc($generated)]
+        + ($from === null ? [] : ['from' => $utc($from)]) + ['source' => 'digistore24', 'events' => $events]));
 };
 /** A new Kirby with these options. */
 $kirby = function (array $options) use ($tmp): App {
@@ -167,6 +166,22 @@ try {
     expect(4, $app->site()->kehaiSummary('kurse')['count'], 'site method with a group');
     expect(null, $app->site()->kehaiSummary('jahreskurs', 7, 4), 'site method: own minimum');
     expect(null, $kirby(['kehai.active' => true, 'kehai.products' => $products])->site()->kehaiSummary('jahreskurs'), 'kehai.summary off: null');
+    // KEH-002: `days` longer than what the fetch reads is shortened to what the file covers.
+    $snippet = fn (array $options, array $data) => logged(fn () => trim((string) $kirby($options)->snippet('kehai/summary', $data, true)));
+    [$html, $log] = $snippet($on, ['product' => 'jahreskurs', 'days' => 30]);
+    holds($html === '<p class="kehai-summary">In the last 14 days, “Annual course” was booked 3 times</p>', 'summary snippet with days 30: "In the last 14 days", the count is the one of 14 days (' . $html . ')');
+    holds(str_contains($log, 'the summary for "jahreskurs" asks for 30 days, but the data file covers 14'), 'summary snippet with days 30: the shortening is logged');
+    $kept = file_get_contents($file);
+    file_put_contents($file, json_encode(['from' => (new DateTimeImmutable('-30 days'))->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z')] + json_decode($kept, true)));
+    [$html, $log] = $snippet($on + ['kehai.summaryDays' => 30], ['product' => 'jahreskurs', 'days' => 30]);
+    holds(str_contains($html, 'In the last 30 days, “Annual course” was booked 4 times') && $log === '', 'kehai.summaryDays 30 and a file that covers 30 days: days 30 is shown as asked, nothing logged (' . $html . $log . ')');
+    file_put_contents($file, $kept);
+    $writeFile([['type' => 'purchase', 'product' => 'jahreskurs', 'at' => $minute('-2 hours')]], '-10 minutes', null);
+    [$html] = $snippet($on + ['kehai.summaryMin' => 1], ['product' => 'jahreskurs', 'days' => 30]);
+    holds(str_contains($html, 'In the last 14 days'), 'a 1.0.0 file (no "from") is assumed to cover the fetch window: 30 days become 14');
+    $writeFile([['type' => 'purchase', 'product' => 'jahreskurs', 'at' => $minute('-2 hours')]], '-10 minutes', '-2 hours');
+    [$html, $log] = $snippet($on + ['kehai.summaryMin' => 1], ['product' => 'jahreskurs']);
+    holds($html === '' && str_contains($log, 'covers less than a day'), 'a file that covers less than a day: no summary, logged');
 
     // ---- 5. Stale or missing file: nothing anywhere, a log line --------------------------------
     $writeFile([['type' => 'purchase', 'product' => 'jahreskurs', 'at' => $minute('-1 hour')]], '-49 hours');
@@ -200,10 +215,33 @@ try {
     holds(!str_contains(file_get_contents($file), 'Annegret'), 'pull mode: the file is anonymous');
     [$response] = $route($pull);
     holds(!Pull::pending(), 'pull mode: not due again right after');
+    // Pull mode prints the bubble even with nothing to show: its script's call of the route is what restarts the fetch.
+    $printed = fn (string $html) => str_contains($html, '<div class="kehai') && str_contains($html, 'data-kehai-src=')
+        && (bool) preg_match('~<script src="http://example\.invalid/[^"]*kehai\.js[^"]*" defer></script>~', $html);
+    $kept = file_get_contents($file);
+    $requests = count($calls);
+    $emptyStates = [
+        'file missing' => [fn () => unlink($file), fn () => file_put_contents($file, $kept)],
+        'file stale' => [fn () => $writeFile([['type' => 'purchase', 'product' => 'jahreskurs', 'at' => $minute('-1 hour')]], '-49 hours'), fn () => file_put_contents($file, $kept)],
+    ];
+    foreach ($emptyStates as $state => [$set, $restore]) {
+        $set();
+        [$html] = $page($pull);
+        holds($printed($html) && $noInlineScript($html), "pull mode, $state: the bubble's container and script are still printed");
+        expect($requests, count($calls), "pull mode, $state: the page render still makes no request");
+        $restore();
+    }
+    holds($printed((string) $kirby($pull)->snippet('kehai/bubble', ['products' => ['nope']], true)), 'pull mode, no event of these products: container and script are printed');
+    expect('', trim((string) $kirby(array_replace($pull, ['kehai.active' => false]))->snippet('kehai/bubble', [], true)), 'pull mode, kehai.active off: nothing printed');
+    [$html] = $page(array_replace($pull, ['kehai.bubble' => false, 'kehai.summary' => false]));
+    holds(!str_contains($html, 'kehai'), 'pull mode, kehai.bubble off: no Kehai markup');
+    expect(false, $kirby(array_replace($pull, ['kehai.bubble' => false]))->site()->kehaiBubble(), 'pull mode, kehai.bubble off: kehaiBubble() is false');
+    expect('', trim((string) $kirby($on)->snippet('kehai/bubble', ['products' => ['nope']], true)), 'pull mode off, no event of these products: still nothing printed');
     unlink($tmp . '/site/config/kehai.php');
     @unlink(Pull::marker($file));
     [, , $log] = $route($pull);
     holds(!Pull::pending() && str_contains($log, 'kehai.pull is on, but site/config/kehai.php has no key'), 'pull mode without key: logged, nothing scheduled');
+    expect('', trim((string) $kirby($pull)->snippet('kehai/bubble', ['products' => ['nope']], true)), 'pull mode without a key: nothing to show, nothing printed (the route could not fetch anyway)');
     Pull::$transports = null;
 
     // ---- 7. A site's own snippet wins ------------------------------------------------------------------

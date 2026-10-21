@@ -10,7 +10,8 @@ use DateTimeZone;
  * Purchases from Digistore24 (`listPurchases`), turned into anonymous
  * events.
  *
- *   GET https://www.digistore24.com/api/call/listPurchases/json?from=YYYY-MM-DD&to=YYYY-MM-DD…
+ *   GET https://www.digistore24.com/api/call/listPurchases/json?from=YYYY-MM-DD&to=YYYY-MM-DD
+ *       &search[order_type]=live&search[product_id]=111111,222222&sort_by=date&sort_order=desc&page_no=1&page_size=500
  *   X-DS-API-KEY: …
  *   → {"result": "success", "data": {"purchase_list": [ … ]}}   (sometimes `data` is the list itself)
  *
@@ -42,6 +43,18 @@ use DateTimeZone;
  *    instalment changes neither. An order whose `created_at` lies before
  *    the window is dropped even if the API returns it (because of a recent
  *    payment), and an order id that appears twice counts once.
+ *
+ * The request asks for the allow list's product ids only (`search[product_id]`,
+ * comma separated) and newest first (`sort_by=date`, `sort_order=desc`; the
+ * API's default is oldest first). The product filter only reduces the
+ * volume: the allow list stays the gate (`main_product_id` is checked
+ * locally). A regular answer is at most MAX_PAGES × PAGE_SIZE orders; when
+ * the last page is still full the answer was cut. Newest first, what falls
+ * off is the oldest, so the result's `from` moves to the minute after the
+ * oldest order received (boundary()), and the notes say so. The data file
+ * then covers a shorter period, and the summary never claims more. A cut
+ * answer that is not newest first covers nothing: the source ignored the
+ * sort, and what fell off is unknown.
  *
  * The rules are deliberately strict: a purchase that does not count is
  * never shown, one that does not clearly count is not shown either.
@@ -77,14 +90,56 @@ final class Digistore24 implements Source
     {
         $zone = new DateTimeZone($this->timezone);
         $purchases = [];
+        $cut = false;
         for ($page = 1; $page <= self::MAX_PAGES; $page++) {
             $list = $this->page($from->setTimezone($zone)->format('Y-m-d'), $now->setTimezone($zone)->modify('+1 day')->format('Y-m-d'), $page);
             array_push($purchases, ...$list);
             if (count($list) < self::PAGE_SIZE) {
                 break;
             }
+            $cut = $page === self::MAX_PAGES; // the last page we read was still full: the answer goes on
         }
-        return $this->convert($purchases, $from, $now);
+        $result = $this->convert($purchases, $from, $now) + ['from' => $from];
+        if ($cut) {
+            $result['from'] = self::boundary($purchases, $from, $now, $zone);
+            // The first note is the count line; the cut belongs right after it.
+            array_splice($result['notes'], 1, 0, 'the source cut its answer after ' . self::MAX_PAGES * self::PAGE_SIZE . ' orders (MAX_PAGES × PAGE_SIZE): the file covers the last '
+                . max(0, intdiv($now->getTimestamp() - $result['from']->getTimestamp(), 86400)) . ' days only');
+        }
+        return $result;
+    }
+
+    /**
+     * Where a cut answer is complete from. The request asks for newest
+     * first, so the answer is the newest MAX_PAGES × PAGE_SIZE orders —
+     * if the source honoured that. Every readable `created_at` must
+     * therefore be in non-increasing order; otherwise nothing is known to
+     * be complete ($now, the file covers nothing). An order created before
+     * the window among them means every order of the window came along
+     * ($from). Else the boundary is the minute after the oldest order
+     * received. No readable time at all: $now.
+     */
+    private static function boundary(array $purchases, DateTimeImmutable $from, DateTimeImmutable $now, DateTimeZone $zone): DateTimeImmutable
+    {
+        $oldest = null;
+        foreach ($purchases as $purchase) {
+            $time = is_array($purchase) ? self::time($purchase['created_at'] ?? null, $zone) : null;
+            if ($time === null) {
+                continue;
+            }
+            if ($oldest !== null && $time > $oldest) {
+                return $now;
+            }
+            $oldest = $time;
+        }
+        if ($oldest === null) {
+            return $now;
+        }
+        if ($oldest < $from) {
+            return $from;
+        }
+        $minute = $oldest->setTimezone(new DateTimeZone('UTC'));
+        return $minute->setTime((int) $minute->format('H'), (int) $minute->format('i'))->modify('+60 seconds');
     }
 
     /**
@@ -206,11 +261,13 @@ final class Digistore24 implements Source
     private function page(string $from, string $to, int $page): array
     {
         $url = self::ENDPOINT . '?' . http_build_query([
-            'from'      => $from,
-            'to'        => $to,
-            'search'    => ['order_type' => 'live'],
-            'page_no'   => $page,
-            'page_size' => self::PAGE_SIZE,
+            'from'       => $from,
+            'to'         => $to,
+            'search'     => ['order_type' => 'live'] + ($this->products === [] ? [] : ['product_id' => implode(',', array_keys($this->products))]),
+            'sort_by'    => 'date',
+            'sort_order' => 'desc',
+            'page_no'    => $page,
+            'page_size'  => self::PAGE_SIZE,
         ]);
         try {
             $answer = ($this->transport)($url, ['X-DS-API-KEY: ' . $this->key, 'Accept: application/json']);

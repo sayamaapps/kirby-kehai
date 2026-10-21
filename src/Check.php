@@ -51,7 +51,7 @@ final class Check
         $say('bubble: ' . $onOff($config['bubble']) . ($config['bubble']
             ? " ({$config['position']}, after {$config['delay']} s, at most {$config['max']}, events up to {$config['maxAge']} days old)" : ''), 1);
         $say('summary: ' . $onOff($config['summary']) . ($config['summary']
-            ? " (last {$config['summaryDays']} days, at least {$config['summaryMin']})" : ''), 1);
+            ? " (last {$config['summaryDays']} days, at least {$config['summaryMin']}; the fetch reads " . Config::window($config) . ' days)' : ''), 1);
         $say('pull: ' . $onOff($config['pull']) . ($config['pull'] ? " (every {$config['pullInterval']} minutes)" : '')
             . ', key in site/config/' . Options::SECRETS . ': ' . ($keyFile ? 'yes' : 'no'), 1);
 
@@ -59,6 +59,9 @@ final class Check
             $notes[] = 'kehai.active is off: the site shows nothing and the route answers 404.';
         } elseif (!$config['bubble'] && !$config['summary']) {
             $notes[] = 'kehai.bubble and kehai.summary are both off: nothing is shown.';
+        }
+        if ($config['active'] && $config['pull'] && !$config['bubble']) {
+            $notes[] = 'kehai.pull is on and kehai.bubble is off: only a page render on PHP-FPM or LiteSpeed starts the fetch (the bubble\'s script would call the route elsewhere). On another server use the workflow.';
         }
         if ($config['products'] === []) {
             $problems[] = 'kehai.products is empty: no purchase is counted.';
@@ -75,15 +78,25 @@ final class Check
         $say($config['file'], 1);
         $read = Events::read($config['file'], true, null);
         $events = [];
+        $covered = Config::window($config);
         if ($read['error'] !== null) {
             $say($read['error'], 1);
             $problems[] = 'The data file is ' . ($read['error'] === 'missing' ? 'missing' : 'unusable (' . $read['error'] . ')') . ': nothing is shown. Run `kehai fetch` or check the upload.';
         } else {
             $age = $now->getTimestamp() - $read['generated']->getTimestamp();
             $say('generated ' . $read['generated']->format('Y-m-d H:i') . ' UTC (' . self::age($age) . ' ago), source ' . ($read['source'] ?? '?') . ', format ' . Events::FORMAT, 1);
+            $covered = Events::covered($read['from'], $config, $now);
+            $say($read['from'] === null
+                ? 'covers: not recorded (written by 1.0.0; the fetch window of this configuration is assumed)'
+                : 'covers ' . $covered . ' days (from ' . $read['from']->format('Y-m-d H:i') . ' UTC)', 1);
             $say(count($read['events']) . ' events' . ($read['dropped'] > 0 ? ', ' . $read['dropped'] . ' invalid entries ignored' : ''), 1);
             if ($read['dropped'] > 0) {
                 $notes[] = $read['dropped'] . ' entries in the data file are not valid events and are ignored.';
+            }
+            if ($read['from'] !== null && $covered < $config['summaryDays']) {
+                $notes[] = $covered < 1
+                    ? "The data file covers less than a day: summaries show nothing (the source's answer was cut; see kehai fetch)."
+                    : "The data file covers only $covered days: summaries are shortened to $covered days (the source's answer was cut; see kehai fetch).";
             }
             if ($age > $config['maxStale'] * 3600) {
                 $problems[] = 'The data file is older than kehai.maxStale (' . $config['maxStale'] . ' hours): nothing is shown until the next successful fetch.';
@@ -106,18 +119,17 @@ final class Check
             return count(array_filter($events, fn (array $e) => $e['product'] === $key
                 && Events::time($e)->getTimestamp() >= $oldest && Events::time($e)->getTimestamp() <= $limit));
         };
+        $summaryDays = min($config['summaryDays'], $covered); // the page shortens the summary to what the file covers
         $bubbleTotal = 0;
         foreach ($keys as $key) {
             $bubble = $within($key, $config['maxAge']);
-            $summary = $within($key, $config['summaryDays']);
+            $summary = $within($key, max(1, $summaryDays));
             $bubbleTotal += $bubble;
-            $say("$key: $bubble in the last {$config['maxAge']} days (bubble), $summary in the last {$config['summaryDays']} days (summary"
-                . ($summary >= $config['summaryMin'] ? ', shown' : ', below ' . $config['summaryMin'] . ', not shown') . ')', 1);
+            $say("$key: $bubble in the last {$config['maxAge']} days (bubble), " . self::summaryLine($summary, $summaryDays, $config['summaryMin']), 1);
         }
         foreach ($config['groups'] as $name => $group) {
-            $summary = array_sum(array_map(fn (string $key) => $within($key, $config['summaryDays']), $group['products']));
-            $say("group $name: $summary in the last {$config['summaryDays']} days (summary"
-                . ($summary >= $config['summaryMin'] ? ', shown' : ', below ' . $config['summaryMin'] . ', not shown') . ')', 1);
+            $summary = array_sum(array_map(fn (string $key) => $within($key, max(1, $summaryDays)), $group['products']));
+            $say("group $name: " . self::summaryLine($summary, $summaryDays, $config['summaryMin']), 1);
         }
         $unknown = array_count_values(array_column(array_filter($events, fn (array $e) => !in_array($e['product'], $keys, true)), 'product'));
         ksort($unknown);
@@ -144,6 +156,15 @@ final class Check
             }
         }
         return $problems === [] ? self::EXIT_OK : self::EXIT_PROBLEM;
+    }
+
+    /** "3 in the last 7 days (summary, shown)" — or that the summary shows nothing, since the file covers less than a day. */
+    private static function summaryLine(int $count, int $days, int $min): string
+    {
+        if ($days < 1) {
+            return 'summary not shown (the data file covers less than a day)';
+        }
+        return "$count in the last $days days (summary" . ($count >= $min ? ', shown' : ", below $min, not shown") . ')';
     }
 
     private static function age(int $seconds): string
