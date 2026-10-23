@@ -69,7 +69,7 @@ final class Http
         ]]);
         $body = @file_get_contents($url, false, $context, 0, self::MAX_BYTES + 1);
         // http_get_last_response_headers() since PHP 8.4; the magic local
-        // variable is deprecated in 8.5, hence the indirection (as in Shoji).
+        // variable is deprecated in 8.5, hence the indirection.
         $legacy = 'http_response_header';
         $lines = function_exists('http_get_last_response_headers')
             ? (http_get_last_response_headers() ?? [])
