@@ -24,12 +24,6 @@ Honest social proof for [Kirby CMS](https://getkirby.com): real, recent Digistor
 composer require sayamaapps/kirby-kehai
 ```
 
-Until the package is on Packagist, add the repository to `composer.json` first:
-
-```json
-"repositories": [{ "type": "vcs", "url": "https://github.com/sayamaapps/kirby-kehai" }]
-```
-
 Composer installs to `site/plugins/kehai/` and links the CLI as `vendor/bin/kehai`. Add that path to `.gitignore` and deploy it like `vendor/`.
 
 ## Usage
