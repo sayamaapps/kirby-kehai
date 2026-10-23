@@ -1,6 +1,6 @@
 {
     "name": "sayamaapps/kirby-kehai",
-    "description": "Honest social proof for Kirby CMS: real, recent purchases (Digistore24) as a small notice or a summary line, served from your own server. No third-party request when the page loads, no personal data, no cookies, no inline script.",
+    "description": "Honest social proof for Kirby CMS: real Digistore24 purchases, shown without personal data.",
     "type": "kirby-plugin",
     "license": "MIT",
     "keywords": ["kirby", "kirby-plugin", "kirby-5", "social-proof", "digistore24", "privacy", "gdpr", "csp"],
