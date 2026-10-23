@@ -32,7 +32,7 @@ env:
 
 jobs:
   fetch:
-    runs-on: [self-hosted, studio-linux]   # ← your own runner (or ubuntu-latest)
+    runs-on: [self-hosted, linux]   # ← your own runner (or ubuntu-latest)
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4

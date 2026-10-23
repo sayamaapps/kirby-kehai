@@ -11,8 +11,7 @@ namespace Kehai;
  * missing Kirby translation must never silently turn a German notice
  * English.
  *
- * `kehai.texts` replaces single strings, per language or for all (the
- * pattern of Shoji):
+ * `kehai.texts` replaces single strings, per language or for all:
  *
  *   'kehai.texts' => ['de' => ['bubble.purchase' => 'Jemand hat „{product}“ gekauft']]
  *   'kehai.texts' => ['close' => 'OK']

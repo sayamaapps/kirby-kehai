@@ -66,8 +66,8 @@ All notable changes to this project are documented here. Versions follow
 
 ## [1.0.0] — 2026-10-13
 
-First release. Replaces the Digistore24 "Social Proof Bubble" on client sites:
-no script from digistore24.com, no first names, no towns.
+First release. Replaces Digistore24's own social-proof bubble: no script
+from digistore24.com, no first names, no towns.
 
 ### Added
 
@@ -105,8 +105,8 @@ no script from digistore24.com, no first names, no towns.
 - **Pull mode** (`kehai.pull`): the site fetches by itself, at most every
   `pullInterval` minutes, one at a time (lock), 5 seconds, after the answer
   has been sent; the last good file stays on errors.
-- **English and German**, every string replaceable with `kehai.texts`
-  (Shoji's pattern), also registered as Kirby translations (`kehai.*`).
+- **English and German**, every string replaceable with `kehai.texts`,
+  also registered as Kirby translations (`kehai.*`).
 - `examples/kehai-fetch.yml`: hourly GitHub Actions workflow that uploads only
   the data file.
 - CI on PHP 8.2–8.4 and Node 22.
