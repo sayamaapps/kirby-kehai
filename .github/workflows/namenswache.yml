@@ -1,6 +1,9 @@
-# namenswache — Prüfung auf verbotene Begriffe in diesem öffentlichen Repo.
-# Läuft mit scripts/oeffentlich/namenswache-ci.py, das im selben Repo liegen muss.
-# Die Begriffe stehen im Repo-Secret NAMENSWACHE_BEGRIFFE, nie in einer Datei.
+# namenswache — Prüfung auf Kundennamen.
+# Diese Datei ist eine Vorlage. In jedem öffentlichen Repo als
+# .github/workflows/namenswache.yml ablegen, zusammen mit
+# scripts/oeffentlich/namenswache-ci.py. Ändert sich eines der beiden, beide
+# gemeinsam in allen öffentlichen Repos aktualisieren.
+# Das Secret NAMENSWACHE_BEGRIFFE liegt im Repo-Secret, nie in einer Datei.
 name: namenswache
 
 on:
