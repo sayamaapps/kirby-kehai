@@ -140,7 +140,9 @@ try {
     // The files are served by Kirby from the plugin's assets.
     preg_match('~<script src="http://example\.invalid/([^"]+)"~', $html, $m);
     $asset = $kirby($on)->render($m[1]);
-    expect([200, 'application/javascript'], [$asset->code(), $asset->type()], 'kehai.js is served');
+    // Kirby 5 types .js as application/javascript, Kirby 6 as text/javascript (RFC 9239): both are JavaScript.
+    expect(200, $asset->code(), 'kehai.js is served');
+    holds(in_array($asset->type(), ['application/javascript', 'text/javascript'], true), 'kehai.js is served as JavaScript: ' . var_export($asset->type(), true));
     expect(file_get_contents($base . '/assets/kehai.js'), $asset->body(), 'kehai.js is the package file');
     preg_match('~<link rel="stylesheet" href="http://example\.invalid/([^"]+)"~', $html, $m);
     expect(file_get_contents($base . '/assets/kehai.css'), $kirby($on)->render($m[1])->body(), 'kehai.css is served');
