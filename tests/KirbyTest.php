@@ -30,7 +30,9 @@ final class KirbyTest extends TestCase
 			'222222' => ['key' => 'wochenendkurs', 'label' => 'Wochenendkurs'],
 		];
 		$on = ['kehai.active' => true, 'kehai.products' => $products, 'kehai.bubble' => true, 'kehai.summary' => true];
-		$minute = fn (string $ago) => Events::minute(new DateTimeImmutable($ago));
+		// One reference time for the whole test: a minute boundary between the writes and the expectations must not move them.
+		$reference = new DateTimeImmutable('now');
+		$minute = fn (string $ago) => Events::minute($reference->modify($ago));
 		/** Writes the data file as `kehai fetch` would — plus fields a tampered file might carry. */
 		$writeFile = function (array $events, string $generated = '-10 minutes', string|null $from = '-14 days') use ($file): void {
 			$utc = fn (string $time) => (new DateTimeImmutable($time))->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z');
