@@ -18,6 +18,17 @@ All notable changes to this project are documented here. Versions follow
   **[privacy text]**. Every site using the plugin must then review its privacy
   policy.
 
+## [Unreleased]
+
+### Fixed
+
+- **`kehai fetch` reads the last N × 24 hours, not N calendar days.** The
+  window was `-N days` in the process time zone, which is 23 or 25 hours on
+  the days the clocks change, while coverage and the summary count 86400
+  seconds per day. With `maxAge` or `summaryDays` of 1 and a Europe/Berlin
+  process, a fresh purchase dropped out of the one-day summary on the spring
+  change. The window now uses the same 86400 seconds as the rest.
+
 ## [1.1.0] — 2026-10-17
 
 ### Fixed
