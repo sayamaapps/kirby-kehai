@@ -49,6 +49,6 @@ $data = [
 <?php if ($css) : ?><link rel="stylesheet" href="<?= esc($css) ?>"><?php endif ?>
 <div class="kehai kehai-<?= esc($config['position']) ?>" data-kehai<?php foreach ($data as $name => $value) : ?> <?= $name ?>="<?= esc((string)$value) ?>"<?php endforeach ?>>
   <p class="kehai-text" role="status" aria-live="polite" aria-atomic="true"></p>
-  <button type="button" class="kehai-close" aria-label="<?= esc(\Kehai\I18n::t('close')) ?>" hidden><span aria-hidden="true">×</span></button>
+  <button type="button" class="kehai-close" aria-label="<?= esc(\Sayamaapps\Kehai\I18n::t('close')) ?>" hidden><span aria-hidden="true">×</span></button>
 </div>
 <script src="<?= esc($script) ?>" defer></script>

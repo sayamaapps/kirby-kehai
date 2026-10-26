@@ -1,10 +1,10 @@
 <?php
 
-use Kehai\Display;
-use Kehai\Events;
-use Kehai\Fetch;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Sayamaapps\Kehai\Display;
+use Sayamaapps\Kehai\Events;
+use Sayamaapps\Kehai\Fetch;
 
 /**
  * The fetch window across a daylight-saving change: `kehai fetch` asks the

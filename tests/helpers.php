@@ -74,7 +74,7 @@ function logged(Closure $run): array
 /** The site configuration the tests share: two Digistore24 ids for one key, one more product, a group. */
 function testConfig(string $base, array $raw = []): array
 {
-	return Kehai\Config::normalize($raw + [
+	return Sayamaapps\Kehai\Config::normalize($raw + [
 		'active'   => true,
 		'products' => [
 			'111111' => ['key' => 'jahreskurs', 'label' => ['de' => 'Jahreskurs', 'en' => 'Annual course']],

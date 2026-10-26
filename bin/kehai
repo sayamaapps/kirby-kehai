@@ -14,6 +14,13 @@ if (PHP_SAPI !== 'cli') {
     exit;
 }
 
-require_once dirname(__DIR__) . '/src/autoload.php';
+// The class map, loaded without Kirby (the CLI runs before a site is booted).
+$kehaiClasses = require dirname(__DIR__) . '/autoload.php';
+spl_autoload_register(static function (string $class) use ($kehaiClasses): void {
+	$file = $kehaiClasses[strtolower($class)] ?? null;
+	if ($file !== null) {
+		require dirname(__DIR__) . '/' . $file;
+	}
+});
 
-exit(Kehai\Cli::main(getenv(), $argv, (string) getcwd(), STDOUT, STDERR));
+exit(Sayamaapps\Kehai\Cli::main(getenv(), $argv, (string) getcwd(), STDOUT, STDERR));

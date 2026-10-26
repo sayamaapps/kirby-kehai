@@ -1,6 +1,6 @@
 <?php
 
-namespace Kehai;
+namespace Sayamaapps\Kehai;
 
 /**
  * Text that is printed to a terminal or written to a log (Kirby-free).

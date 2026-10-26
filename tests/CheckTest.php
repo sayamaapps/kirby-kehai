@@ -1,11 +1,11 @@
 <?php
 
-use Kehai\Check;
-use Kehai\Cli;
-use Kehai\Events;
-use Kehai\Text;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Sayamaapps\Kehai\Check;
+use Sayamaapps\Kehai\Cli;
+use Sayamaapps\Kehai\Events;
+use Sayamaapps\Kehai\Text;
 
 /**
  * `kehai check` and the CLI entry: what is reported, the exit codes, and
@@ -129,7 +129,7 @@ final class CheckTest extends TestCase
 				'format' => 1, 'generated' => '2026-10-13T09:00:00Z', 'source' => "ds\x1b[8m24\u{202e}",
 				'events' => [$event('jahreskurs', '-1 hour'), ['type' => "purchase\x1b[2J", 'product' => "x\x1b[31m", 'at' => "\x1b"]],
 			]));
-			$problems = Kehai\Config::normalize(['products' => ["1\x1b[2J" => ['key' => 'x'], '2' => ['key' => "\x1b[31m"]]], $tmp)['problems'];
+			$problems = Sayamaapps\Kehai\Config::normalize(['products' => ["1\x1b[2J" => ['key' => 'x'], '2' => ['key' => "\x1b[31m"]]], $tmp)['problems'];
 			[$code, $out] = $check($evil, $problems);
 			holds(Text::isPlain($out), 'check output has no control characters, escapes or bidi overrides: ' . json_encode($out));
 			holds(str_contains($out, 'source ds [8m24,') && str_contains($out, '1 invalid entries ignored'), 'the values are shown, made harmless');

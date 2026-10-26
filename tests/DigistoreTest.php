@@ -1,12 +1,12 @@
 <?php
 
-use Kehai\Config;
-use Kehai\Digistore24;
-use Kehai\Events;
-use Kehai\Fetch;
-use Kehai\SourceException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Sayamaapps\Kehai\Config;
+use Sayamaapps\Kehai\Digistore24;
+use Sayamaapps\Kehai\Events;
+use Sayamaapps\Kehai\Fetch;
+use Sayamaapps\Kehai\SourceException;
 
 /**
  * The Digistore24 adapter and `kehai fetch` against recorded answers,
@@ -119,7 +119,7 @@ final class DigistoreTest extends TestCase
 			expect([], $one(['created_at' => '2026-07-01 10:00:00', 'last_payment_at' => '2026-10-13 09:00:00', 'pay_sequence_no' => 4]), 'later instalment of an old order is not a new purchase');
 			expect(2, count((new Digistore24(fn () => [], $key, $allow))->convert([$base, $base, array_merge($base, ['id' => 'OTHER'])], $from, $now)['events']), 'the same order id twice counts once, another id counts');
 			// Rounding: down to the minute, in UTC.
-			expect('2026-10-13T07:41:00Z', Kehai\Events::minute(new DateTimeImmutable('2026-10-13 09:41:59.999', new DateTimeZone('Europe/Berlin'))), 'rounded down, never up');
+			expect('2026-10-13T07:41:00Z', Sayamaapps\Kehai\Events::minute(new DateTimeImmutable('2026-10-13 09:41:59.999', new DateTimeZone('Europe/Berlin'))), 'rounded down, never up');
 
 			// ---- Country on and off ---------------------------------------------------
 			$calls = [];
@@ -236,7 +236,7 @@ final class DigistoreTest extends TestCase
 				holds(!str_contains($out . $err, $secret), "output never contains \"$secret\"");
 			}
 			holds(!str_contains($written . $out . $err, $key), 'key never written or printed');
-			holds(Kehai\Text::isPlain($out . $err), 'output is plain text');
+			holds(Sayamaapps\Kehai\Text::isPlain($out . $err), 'output is plain text');
 
 			// A cut answer: the source's cut (20 pages), the MAX_EVENTS cut, or both — the file says what it covers, the output says so.
 			$calls = [];
@@ -290,9 +290,9 @@ final class DigistoreTest extends TestCase
 			file_put_contents($tmp . '/afile', 'x');
 			[$code, $out, $err] = $run($config, $key, scripted([$ok()], $calls), "afile/sub\x1b[2J\x1b]0;owned\x07/events.json");
 			holds($code === Fetch::EXIT_ERROR && str_contains($err, 'Cannot create directory'), 'unwritable target: exit 1 with a message');
-			holds(Kehai\Text::isPlain($out . $err), 'error output is plain text: ' . json_encode($err));
+			holds(Sayamaapps\Kehai\Text::isPlain($out . $err), 'error output is plain text: ' . json_encode($err));
 			[$code, $out, $err] = $run($config, $key, scripted([$ok()], $calls), "out\x1b[31m.json");
-			holds($code === Fetch::EXIT_OK && Kehai\Text::isPlain($out . $err), 'written line is plain text: ' . json_encode($out));
+			holds($code === Fetch::EXIT_OK && Sayamaapps\Kehai\Text::isPlain($out . $err), 'written line is plain text: ' . json_encode($out));
 
 		} finally {
 			removeTree($tmp);

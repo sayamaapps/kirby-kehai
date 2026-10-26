@@ -1,12 +1,12 @@
 <?php
 
-use Kehai\Events;
-use Kehai\Log;
-use Kehai\Pull;
 use Kirby\Cms\App;
 use Kirby\Template\Snippet;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Sayamaapps\Kehai\Events;
+use Sayamaapps\Kehai\Log;
+use Sayamaapps\Kehai\Pull;
 
 /**
  * The plugin with real Kirby, in a throwaway site: off by default, the

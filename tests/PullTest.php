@@ -1,10 +1,10 @@
 <?php
 
-use Kehai\Digistore24;
-use Kehai\Log;
-use Kehai\Pull;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Sayamaapps\Kehai\Digistore24;
+use Sayamaapps\Kehai\Log;
+use Sayamaapps\Kehai\Pull;
 
 /**
  * Pull mode without a network: at most every N minutes, one fetch at a

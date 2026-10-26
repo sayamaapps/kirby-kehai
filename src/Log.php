@@ -1,6 +1,6 @@
 <?php
 
-namespace Kehai;
+namespace Sayamaapps\Kehai;
 
 /**
  * The one place where Kehai writes to the PHP error log (Kirby-free).

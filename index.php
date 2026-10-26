@@ -3,14 +3,15 @@
 use Kirby\Cms\App;
 use Kirby\Http\Response;
 
-require_once __DIR__ . '/src/autoload.php';
+Kirby\Filesystem\F::loadClasses(require __DIR__ . '/autoload.php', __DIR__);
+require_once __DIR__ . '/legacy.php';
 
-use Kehai\Config;
-use Kehai\Display;
-use Kehai\Events;
-use Kehai\I18n;
-use Kehai\Options;
-use Kehai\Pull;
+use Sayamaapps\Kehai\Config;
+use Sayamaapps\Kehai\Display;
+use Sayamaapps\Kehai\Events;
+use Sayamaapps\Kehai\I18n;
+use Sayamaapps\Kehai\Options;
+use Sayamaapps\Kehai\Pull;
 
 /**
  * Kehai (気配, the sense that someone is there — without knowing who):
@@ -62,7 +63,7 @@ function kehai_pull_later(App $kirby, array $config): void
 	}
 	$key = Options::key(Options::secretsFile($kirby));
 	if ($key === null) {
-		Kehai\Log::error('Kehai: kehai.pull is on, but site/config/' . Options::SECRETS . ' has no key');
+		Sayamaapps\Kehai\Log::error('Kehai: kehai.pull is on, but site/config/' . Options::SECRETS . ' has no key');
 		return;
 	}
 	Pull::later($config, $key);

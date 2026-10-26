@@ -1,12 +1,12 @@
 <?php
 
-use Kehai\Config;
-use Kehai\Display;
-use Kehai\Events;
-use Kehai\I18n;
-use Kehai\Log;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Sayamaapps\Kehai\Config;
+use Sayamaapps\Kehai\Display;
+use Sayamaapps\Kehai\Events;
+use Sayamaapps\Kehai\I18n;
+use Sayamaapps\Kehai\Log;
 
 /**
  * The data file and what a page makes of it, without Kirby: the one gate
