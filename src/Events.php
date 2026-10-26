@@ -4,6 +4,7 @@ namespace Sayamaapps\Kehai;
 
 use DateTimeImmutable;
 use DateTimeZone;
+use RuntimeException;
 
 /**
  * The data file: format, the minimal fields, atomic writing, reading and
@@ -61,6 +62,7 @@ final class Events
 	 * had to be cut, and is never later than `generated`.
 	 *
 	 * @param list<array> $events
+	 * @param list<string>|null $keys allowed product keys; null = any well-formed key
 	 */
 	public static function build(array $events, DateTimeImmutable $generated, string $source, bool $country, array|null $keys = null, DateTimeImmutable|null $from = null): array
 	{
@@ -73,7 +75,7 @@ final class Events
 		usort($clean, fn (array $a, array $b) => strcmp($b['at'], $a['at']));
 		$kept = array_slice($clean, 0, self::MAX_EVENTS);
 		if (count($clean) > self::MAX_EVENTS) {
-			$edge = self::time($kept[count($kept) - 1])->modify('+60 seconds');
+			$edge = self::time($kept[self::MAX_EVENTS - 1])->modify('+60 seconds');
 			$from = $from === null || $edge > $from ? $edge : $from;
 		}
 		$utc = new DateTimeZone('UTC');
@@ -146,6 +148,7 @@ final class Events
 	 * not JSON, an unknown format. Events that do not pass clean() are
 	 * dropped silently (and counted in `dropped`).
 	 *
+	 * @param list<string>|null $keys allowed product keys; null = any well-formed key
 	 * @return array{error: ?string, generated: ?DateTimeImmutable, from: ?DateTimeImmutable, source: ?string, events: list<array>, dropped: int}
 	 */
 	public static function read(string $file, bool $country = true, array|null $keys = null): array
@@ -211,7 +214,9 @@ final class Events
 			Log::error('Kehai: nothing shown, the data file ' . $config['file'] . ' is ' . ($read['error'] === 'missing' ? 'missing' : 'unusable: ' . $read['error']));
 			return ['events' => [], 'from' => null];
 		}
-		$age = $now->getTimestamp() - $read['generated']->getTimestamp();
+		/** @var DateTimeImmutable $generated set whenever the read succeeded */
+		$generated = $read['generated'];
+		$age = $now->getTimestamp() - $generated->getTimestamp();
 		if ($age > $config['maxStale'] * 3600) {
 			Log::error('Kehai: nothing shown, the data file ' . $config['file'] . ' was last updated ' . intdiv($age, 3600)
 				. ' hours ago (kehai.maxStale is ' . $config['maxStale'] . ')');
@@ -230,27 +235,27 @@ final class Events
 	 * or the new one, never half of it, and a failed write leaves the old
 	 * file as it was.
 	 *
-	 * @throws \RuntimeException when the directory or file cannot be written
+	 * @throws RuntimeException when the directory or file cannot be written
 	 */
 	public static function write(string $file, array $data): void
 	{
 		$dir = dirname($file);
 		if (!is_dir($dir) && !@mkdir($dir, 0775, true) && !is_dir($dir)) {
-			throw new \RuntimeException('Cannot create directory ' . $dir);
+			throw new RuntimeException('Cannot create directory ' . $dir);
 		}
 		$json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 		if ($json === false) {
-			throw new \RuntimeException('Cannot encode the data file');
+			throw new RuntimeException('Cannot encode the data file');
 		}
 		$tmp = $dir . '/.' . basename($file) . '.' . bin2hex(random_bytes(6)) . '.tmp';
 		if (@file_put_contents($tmp, $json . "\n") === false) {
 			@unlink($tmp);
-			throw new \RuntimeException('Cannot write ' . $tmp);
+			throw new RuntimeException('Cannot write ' . $tmp);
 		}
 		@chmod($tmp, 0644);
 		if (!@rename($tmp, $file)) {
 			@unlink($tmp);
-			throw new \RuntimeException('Cannot replace ' . $file);
+			throw new RuntimeException('Cannot replace ' . $file);
 		}
 	}
 }

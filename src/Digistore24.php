@@ -122,7 +122,9 @@ final class Digistore24 implements Source
 	 */
 	public function convert(array $purchases, DateTimeImmutable $from, DateTimeImmutable $now): array
 	{
-		$zone = new DateTimeZone($this->timezone);
+		/** @var non-empty-string $timezone validated by Config */
+		$timezone = $this->timezone;
+		$zone = new DateTimeZone($timezone);
 		$latest = $now->getTimestamp() + Events::FUTURE_TOLERANCE;
 		$events = [];
 		$skipped = [];
@@ -142,7 +144,7 @@ final class Digistore24 implements Source
 			if ($reason === null && $at === null) {
 				$reason = 'no valid created_at';
 			}
-			if ($reason === null && ($at < $from || $at->getTimestamp() > $latest)) {
+			if ($reason === null && ($at < $from || $at?->getTimestamp() > $latest)) {
 				$reason = 'created before the window (a later payment of an older order)';
 			}
 			$order = $purchase['id'] ?? $purchase['purchase_id'] ?? null;
@@ -156,7 +158,7 @@ final class Digistore24 implements Source
 				$skipped[$reason] = ($skipped[$reason] ?? 0) + 1;
 				continue;
 			}
-			$event = ['type' => 'purchase', 'product' => $this->products[(string)$purchase['main_product_id']], 'at' => Events::minute($at)];
+			$event = ['type' => 'purchase', 'product' => $this->products[(string)$purchase['main_product_id']], 'at' => Events::minute($at ?? $now)];
 			$code = $purchase['vat_country'] ?? null;
 			if ($this->country && is_string($code) && preg_match('/^[A-Za-z]{2}\z/', $code)) {
 				$event['country'] = strtoupper($code);
@@ -176,9 +178,12 @@ final class Digistore24 implements Source
 		return ['events' => $events, 'notes' => $notes];
 	}
 
+	#[\Override]
 	public function events(DateTimeImmutable $from, DateTimeImmutable $now): array
 	{
-		$zone = new DateTimeZone($this->timezone);
+		/** @var non-empty-string $timezone validated by Config */
+		$timezone = $this->timezone;
+		$zone = new DateTimeZone($timezone);
 		$purchases = [];
 		$cut = false;
 		for ($page = 1; $page <= self::MAX_PAGES; $page++) {
@@ -193,12 +198,13 @@ final class Digistore24 implements Source
 		if ($cut) {
 			$result['from'] = self::boundary($purchases, $from, $now, $zone);
 			// The first note is the count line; the cut belongs right after it.
-			array_splice($result['notes'], 1, 0, 'the source cut its answer after ' . self::MAX_PAGES * self::PAGE_SIZE . ' orders (MAX_PAGES × PAGE_SIZE): the file covers the last '
-				. max(0, intdiv($now->getTimestamp() - $result['from']->getTimestamp(), 86400)) . ' days only');
+			array_splice($result['notes'], 1, 0, 'the source cut its answer after ' . self::MAX_PAGES * self::PAGE_SIZE . ' orders (MAX_PAGES × PAGE_SIZE): '
+				. 'the file covers the last ' . max(0, intdiv($now->getTimestamp() - $result['from']->getTimestamp(), 86400)) . ' days only');
 		}
 		return $result;
 	}
 
+	#[\Override]
 	public function id(): string
 	{
 		return 'digistore24';

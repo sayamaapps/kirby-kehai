@@ -5,6 +5,7 @@ namespace Sayamaapps\Kehai;
 use Closure;
 use Kirby\Cms\App;
 use Kirby\Cms\Helpers;
+use WeakMap;
 
 /**
  * Reads `kehai.*` options from Kirby and hands them to Config.
@@ -27,7 +28,7 @@ final class Options
 	/** Project root: Kirby's `base` root, otherwise the directory above `site/`. */
 	public static function base(App $kirby): string
 	{
-		return $kirby->root('base') ?? dirname($kirby->root('site'));
+		return $kirby->root('base') ?? dirname((string)$kirby->root('site'));
 	}
 
 	/**
@@ -40,7 +41,7 @@ final class Options
 	public static function config(App $kirby): array
 	{
 		static $cache = null;
-		$cache ??= new \WeakMap();
+		$cache ??= new WeakMap();
 		if (isset($cache[$kirby])) {
 			return $cache[$kirby];
 		}

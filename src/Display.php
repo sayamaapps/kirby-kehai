@@ -59,8 +59,16 @@ final class Display
 	 *
 	 * @return array{count:int, days:int, product:string, text:string}|null
 	 */
-	public static function summary(array $events, array $config, DateTimeImmutable $now, string $language, string $name, int|null $days = null, int|null $min = null, DateTimeImmutable|null $from = null): array|null
-	{
+	public static function summary(
+		array $events,
+		array $config,
+		DateTimeImmutable $now,
+		string $language,
+		string $name,
+		int|null $days = null,
+		int|null $min = null,
+		DateTimeImmutable|null $from = null
+	): array|null {
 		$products = $config['groups'][$name]['products'] ?? (in_array($name, Config::keys($config), true) ? [$name] : null);
 		if ($products === null) {
 			Log::error('Kehai: the summary asks for "' . $name . '", which is neither a product key nor a group');

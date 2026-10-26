@@ -4,6 +4,7 @@ namespace Sayamaapps\Kehai;
 
 use Closure;
 use DateTimeImmutable;
+use RuntimeException;
 
 /**
  * Pull mode (`kehai.pull`, off by default): the site fetches by itself,
@@ -30,7 +31,7 @@ final class Pull
 {
 	public const TIMEOUT = 5;
 
-	/** Seconds on a monotonic clock, for tests: fn (): float. Default hrtime(true) / 1e9. */
+	/** Seconds on a monotonic clock, for tests: fn (): float. Default (float) hrtime(true) / 1e9. */
 	public static Closure|null $clock = null;
 
 	/**
@@ -96,7 +97,7 @@ final class Pull
 
 	private static function now(): float
 	{
-		return self::$clock !== null ? (self::$clock)() : hrtime(true) / 1e9;
+		return self::$clock !== null ? (self::$clock)() : (float)hrtime(true) / 1e9;
 	}
 
 	public static function pending(): bool
@@ -157,9 +158,9 @@ final class Pull
 	private static function withDeadline(float $start): Closure
 	{
 		return function (string $url, array $headers) use ($start): array {
-			$left = self::TIMEOUT - (self::now() - $start);
+			$left = (float)self::TIMEOUT - (self::now() - $start);
 			if ($left <= 0) {
-				throw new \RuntimeException('the pull reached its time limit of ' . self::TIMEOUT . ' seconds');
+				throw new RuntimeException('the pull reached its time limit of ' . self::TIMEOUT . ' seconds');
 			}
 			$timeout = (int)ceil($left);
 			$transport = self::$transports !== null ? (self::$transports)($timeout) : Http::transport($timeout);

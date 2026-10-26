@@ -67,7 +67,8 @@ final class Check
 			$notes[] = 'kehai.bubble and kehai.summary are both off: nothing is shown.';
 		}
 		if ($config['active'] && $config['pull'] && !$config['bubble']) {
-			$notes[] = 'kehai.pull is on and kehai.bubble is off: only a page render on PHP-FPM or LiteSpeed starts the fetch (the bubble\'s script would call the route elsewhere). On another server use the workflow.';
+			$notes[] = 'kehai.pull is on and kehai.bubble is off: only a page render on PHP-FPM or LiteSpeed '
+				. 'starts the fetch (the bubble\'s script would call the route elsewhere). On another server use the workflow.';
 		}
 		if ($config['products'] === []) {
 			$problems[] = 'kehai.products is empty: no purchase is counted.';
@@ -87,10 +88,13 @@ final class Check
 		$covered = Config::window($config);
 		if ($read['error'] !== null) {
 			$say($read['error'], 1);
-			$problems[] = 'The data file is ' . ($read['error'] === 'missing' ? 'missing' : 'unusable (' . $read['error'] . ')') . ': nothing is shown. Run `kehai fetch` or check the upload.';
+			$reason = $read['error'] === 'missing' ? 'missing' : 'unusable (' . $read['error'] . ')';
+			$problems[] = 'The data file is ' . $reason . ': nothing is shown. Run `kehai fetch` or check the upload.';
 		} else {
-			$age = $now->getTimestamp() - $read['generated']->getTimestamp();
-			$say('generated ' . $read['generated']->format('Y-m-d H:i') . ' UTC (' . self::age($age) . ' ago), source ' . ($read['source'] ?? '?') . ', format ' . Events::FORMAT, 1);
+			/** @var DateTimeImmutable $generated set whenever the read succeeded */
+			$generated = $read['generated'];
+			$age = $now->getTimestamp() - $generated->getTimestamp();
+			$say('generated ' . $generated->format('Y-m-d H:i') . ' UTC (' . self::age($age) . ' ago), source ' . ($read['source'] ?? '?') . ', format ' . Events::FORMAT, 1);
 			$covered = Events::covered($read['from'], $config, $now);
 			$say($read['from'] === null
 				? 'covers: not recorded (written by 1.0.0; the fetch window of this configuration is assumed)'

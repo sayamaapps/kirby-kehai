@@ -85,7 +85,11 @@ final class Plugin
 		return I18n::language();
 	}
 
-	/** Product keys from the route's `products` parameter (comma separated), or null for all. */
+	/**
+	 * Product keys from the route's `products` parameter (comma separated), or null for all.
+	 *
+	 * @return list<string>|null
+	 */
 	public static function keys(mixed $value, array $config): array|null
 	{
 		if (!is_string($value) || trim($value) === '') {
@@ -130,7 +134,7 @@ final class Plugin
 			'texts'  => Display::times(),
 			'events' => $events,
 		];
-		return new Response(json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 'application/json', 200, [
+		return new Response((string)json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 'application/json', 200, [
 			'Cache-Control'          => 'public, max-age=' . self::ROUTE_CACHE_SECONDS,
 			'X-Content-Type-Options' => 'nosniff',
 			'X-Robots-Tag'           => 'noindex',

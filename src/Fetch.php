@@ -4,6 +4,7 @@ namespace Sayamaapps\Kehai;
 
 use Closure;
 use DateTimeImmutable;
+use RuntimeException;
 
 /**
  * `kehai fetch`: read the source, write the anonymous data file. Also the
@@ -78,7 +79,7 @@ final class Fetch
 		try {
 			$result = self::collect(self::source($config, $key, $transport ?? Http::transport()), $config, $now);
 			Events::write($target, $result['data']);
-		} catch (SourceException | \RuntimeException $e) {
+		} catch (SourceException | RuntimeException $e) {
 			fwrite($err, Text::plain(str_replace($key, '[key]', $e->getMessage()), 300) . "\n");
 			return self::EXIT_ERROR;
 		}

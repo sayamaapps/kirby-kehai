@@ -151,7 +151,9 @@ final class Config
 
 		$timezone = $raw['timezone'] ?? 'Europe/Berlin';
 		try {
-			$timezone = (new DateTimeZone(is_string($timezone) ? $timezone : ''))->getName();
+			/** @var non-empty-string $name a string that is not empty; empty strings throw below */
+			$name = is_string($timezone) ? $timezone : '';
+			$timezone = (new DateTimeZone($name))->getName();
 		} catch (\Throwable) {
 			$problems[] = 'kehai.timezone is not a valid time zone; using Europe/Berlin';
 			$timezone = 'Europe/Berlin';
