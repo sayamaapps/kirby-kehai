@@ -4,6 +4,7 @@ namespace Sayamaapps\Kehai;
 
 use Closure;
 use Kirby\Cms\App;
+use Kirby\Cms\Helpers;
 
 /**
  * Reads `kehai.*` options from Kirby and hands them to Config.
@@ -14,7 +15,11 @@ use Kirby\Cms\App;
  */
 final class Options
 {
-	public const PREFIX = 'kehai.';
+	/** Option prefix of 1.x, read as a fallback until the next major version. */
+	public const LEGACY_PREFIX = 'kehai.';
+
+	/** Option prefix since 2.0 (OPT-1). */
+	public const PREFIX = 'sayamaapps.kehai.';
 
 	/** The file with the API key for pull mode, in Kirby's config root. Keep it out of git. */
 	public const SECRETS = 'kehai.php';
@@ -53,9 +58,26 @@ final class Options
 		return $cache[$kirby] = $result;
 	}
 
+	/**
+	 * `sayamaapps.kehai.<key>`, falling back to the 1.x spelling `kehai.<key>`
+	 * (reported as a deprecation in debug mode), then the default.
+	 */
 	public static function get(App $kirby, string $key, mixed $default = null): mixed
 	{
-		return $kirby->option(self::PREFIX . $key) ?? $default;
+		$value = $kirby->option(self::PREFIX . $key);
+		if ($value !== null) {
+			return $value;
+		}
+
+		$legacy = $kirby->option(self::LEGACY_PREFIX . $key);
+		if ($legacy !== null) {
+			Helpers::deprecated(
+				'Kehai: kehai.' . $key . ' is deprecated, use sayamaapps.kehai.' . $key,
+				'option-prefix'
+			);
+		}
+
+		return $legacy ?? $default;
 	}
 
 	/**
