@@ -43,7 +43,9 @@ final class Fetch
      */
     public static function collect(Source $source, array $config, DateTimeImmutable $now): array
     {
-        $from = $now->modify('-' . Config::window($config) . ' days');
+        // Whole days of 86400 seconds, as Events::covered() and Display count them.
+        // A calendar day is 23 or 25 hours on a DST change and would cover one day less.
+        $from = $now->setTimestamp($now->getTimestamp() - Config::window($config) * 86400);
         $result = $source->events($from, $now);
         $data = Events::build($result['events'], $now, $source->id(), $config['country'], Config::keys($config), $result['from']);
         $counts = array_count_values(array_column($data['events'], 'product'));
