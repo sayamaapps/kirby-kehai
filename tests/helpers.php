@@ -1,29 +1,20 @@
 <?php
 /**
- * Shared by the test scripts: checks without a framework (exit code 0 =
- * pass), a throwaway directory, and a scripted transport that answers
- * like Digistore24 without a network.
+ * Shared by the tests: assertions with the message first, a throwaway
+ * directory, and a scripted transport that answers like Digistore24
+ * without a network.
  */
-require_once dirname(__DIR__) . '/src/autoload.php';
 
-$checks = 0;
+use PHPUnit\Framework\Assert;
 
 function expect($expected, $actual, string $what): void
 {
-    global $checks;
-    if ($expected !== $actual) {
-        throw new RuntimeException($what . ': ' . var_export($actual, true));
-    }
-    $checks++;
+    Assert::assertSame($expected, $actual, $what);
 }
 
 function holds(bool $ok, string $what): void
 {
-    global $checks;
-    if (!$ok) {
-        throw new RuntimeException($what);
-    }
-    $checks++;
+    Assert::assertTrue($ok, $what);
 }
 
 function tempDir(string $name): string
@@ -35,14 +26,7 @@ function tempDir(string $name): string
 
 function removeTree(string $path): void
 {
-    if (!is_dir($path)) {
-        return;
-    }
-    $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST);
-    foreach ($it as $file) {
-        $file->isDir() && !$file->isLink() ? rmdir($file->getPathname()) : unlink($file->getPathname());
-    }
-    rmdir($path);
+    Kirby\Filesystem\Dir::remove($path);
 }
 
 /**
