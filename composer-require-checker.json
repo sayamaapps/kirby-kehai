@@ -1,0 +1,17 @@
+{
+	"scan-files": [
+		"index.php",
+		"autoload.php",
+		"bin/kehai",
+		"src/*.php"
+	],
+	"symbol-whitelist": [
+		"Kirby",
+		"Kirby\\Cms\\App",
+		"Kirby\\Cms\\Helpers",
+		"Kirby\\Cms\\Page",
+		"Kirby\\Filesystem\\Dir",
+		"Kirby\\Filesystem\\F",
+		"Kirby\\Http\\Response"
+	]
+}

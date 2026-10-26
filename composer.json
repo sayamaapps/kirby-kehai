@@ -1,16 +1,25 @@
 {
     "name": "sayamaapps/kirby-kehai",
     "description": "Honest social proof for Kirby CMS: real Digistore24 purchases, shown without personal data.",
-    "type": "kirby-plugin",
     "license": "MIT",
-    "keywords": ["kirby", "kirby-plugin", "kirby-5", "social-proof", "digistore24", "privacy", "gdpr", "csp"],
-    "homepage": "https://github.com/sayamaapps/kirby-kehai",
+    "type": "kirby-plugin",
+    "keywords": [
+        "kirby",
+        "kirby-plugin",
+        "kirby-5",
+        "social-proof",
+        "digistore24",
+        "privacy",
+        "gdpr",
+        "csp"
+    ],
     "authors": [
         {
             "name": "Simon Räder",
             "homepage": "https://sayamaapps.de"
         }
     ],
+    "homepage": "https://github.com/sayamaapps/kirby-kehai",
     "support": {
         "issues": "https://github.com/sayamaapps/kirby-kehai/issues",
         "source": "https://github.com/sayamaapps/kirby-kehai"
@@ -22,29 +31,44 @@
         "getkirby/composer-installer": "^1.2"
     },
     "require-dev": {
+        "ergebnis/composer-normalize": "^2.54",
         "getkirby/cms": "^5.0",
-        "phpunit/phpunit": "11.5.55"
+        "icanhazstring/composer-unused": "^0.9.7",
+        "maglnet/composer-require-checker": "^4.0",
+        "phpmd/phpmd": "^2.15",
+        "phpunit/phpunit": "11.5.55",
+        "vimeo/psalm": "^6.20"
+    },
+    "suggest": {
+        "ext-curl": "Faster HTTP requests for kehai fetch and pull mode. Without it, PHP streams are used."
     },
     "bin": [
         "bin/kehai"
     ],
-    "scripts": {
-        "test": "vendor/bin/phpunit"
-    },
     "config": {
-        "optimize-autoloader": true,
         "allow-plugins": {
+            "ergebnis/composer-normalize": true,
             "getkirby/composer-installer": true
         },
+        "optimize-autoloader": true,
         "platform": {
-            "php": "8.2.0"
-        }
+            "php": "8.2.27"
+        },
+        "sort-packages": true
     },
     "extra": {
         "installer-name": "kehai",
-        "kirby-cms-path": false,
         "kirby": {
             "compatible": "^5.0"
-        }
+        },
+        "kirby-cms-path": false
+    },
+    "scripts": {
+        "analyze:phpmd": "vendor/bin/phpmd src,index.php github phpmd.xml.dist",
+        "analyze:psalm": "vendor/bin/psalm",
+        "analyze:require-checker": "vendor/bin/composer-require-checker check --config-file=composer-require-checker.json composer.json",
+        "analyze:unused": "vendor/bin/composer-unused",
+        "normalize:check": "@composer normalize --dry-run",
+        "test": "vendor/bin/phpunit"
     }
 }
