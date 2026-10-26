@@ -9,12 +9,12 @@ Open an issue first for anything beyond a small fix, so the change can be discus
 ## Setup
 
 ```sh
-git clone https://github.com/sayamaapps/kirby-noren.git
-cd kirby-noren
+git clone https://github.com/sayamaapps/kirby-kehai.git
+cd kirby-kehai
 composer install
 ```
 
-To try the plugin on a site, link or copy the folder to `site/plugins/noren/`.
+To try the plugin on a site, link or copy the folder to `site/plugins/kehai/`.
 
 ## Checks
 

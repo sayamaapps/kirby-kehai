@@ -13,18 +13,32 @@ Honest social proof for [Kirby CMS](https://getkirby.com): real, recent Digistor
 
 ## Requirements
 
-- PHP 8.2–8.4 with `mbstring`; `curl` recommended
 - Kirby 5
+- PHP 8.2 to 8.5 with `mbstring`; `curl` recommended (streams are used without it)
 - A Digistore24 account with an API key (read access)
 - An hourly job for `kehai fetch`: a GitHub Actions runner or cron, or [pull mode](#pull-mode)
 
+Kirby 6 is tested in CI as a pre-release only; it is not declared as supported yet.
+
 ## Installation
+
+Pick one of three ways.
+
+**Composer** (installs to `site/plugins/kehai/` and links the CLI as `vendor/bin/kehai`):
 
 ```sh
 composer require sayamaapps/kirby-kehai
 ```
 
-Composer installs to `site/plugins/kehai/` and links the CLI as `vendor/bin/kehai`. Add that path to `.gitignore` and deploy it like `vendor/`.
+Add `site/plugins/kehai/` to `.gitignore` if you deploy with `vendor/`.
+
+**Git submodule:**
+
+```sh
+git submodule add https://github.com/sayamaapps/kirby-kehai.git site/plugins/kehai
+```
+
+**ZIP:** download the release archive from GitHub and extract it to `site/plugins/kehai/`. The CLI then runs as `php site/plugins/kehai/bin/kehai`.
 
 ## Usage
 
@@ -32,16 +46,16 @@ Everything is off by default. Minimal `site/config/config.php` (the CLI reads on
 
 ```php
 return [
-    'kehai' => [
-        'active'   => true,
-        'bubble'   => true,
-        'products' => [
-            // Digistore24 product id => key and label
-            '123456' => ['key' => 'jahreskurs', 'label' => ['de' => 'Jahreskurs', 'en' => 'Annual course']],
-        ],
+    'sayamaapps.kehai.active' => true,
+    'sayamaapps.kehai.bubble' => true,
+    'sayamaapps.kehai.products' => [
+        // Digistore24 product id => key and label
+        '123456' => ['key' => 'jahreskurs', 'label' => ['de' => 'Jahreskurs', 'en' => 'Annual course']],
     ],
 ];
 ```
+
+The options are named `sayamaapps.kehai.<name>`. The 1.x names `kehai.<name>` still work; see [Deprecations](#deprecations).
 
 Fetch once from the project root, then check what was counted:
 
@@ -63,11 +77,11 @@ The bubble snippet accepts `['products' => ['jahreskurs']]` to show only some pr
 
 The API key stays on a runner that fetches the purchases and uploads only the data file. `examples/kehai-fetch.yml` is a GitHub Actions workflow for the site's repository: copy it to `.github/workflows/`, replace the values marked `←`, store the secrets and run it once by hand.
 
-`kehai fetch` runs from the project root and boots the site's Kirby to read the `kehai.*` options, so the product list is written down once. The key comes from `DIGISTORE24_API_KEY`, otherwise from `site/config/kehai.php`. `--file` and `--root` override the data file (`kehai.file`) and the project root. Each run reads the last `max(maxAge, summaryDays)` days and replaces the data file completely. Exit codes: `0` written, `1` error (the old file stays), `2` wrong usage or no Kirby, `3` no key.
+`kehai fetch` runs from the project root and boots the site's Kirby to read the `sayamaapps.kehai.*` options, so the product list is written down once. The key comes from `DIGISTORE24_API_KEY`, otherwise from `site/config/kehai.php`. `--file` and `--root` override the data file (`sayamaapps.kehai.file`) and the project root. Each run reads the last `max(maxAge, summaryDays)` days and replaces the data file completely. Exit codes: `0` written, `1` error (the old file stays), `2` wrong usage or no Kirby, `3` no key.
 
 ### Pull mode
 
-For a site without a runner, set `'kehai.pull' => true` and put the key in `site/config/kehai.php`:
+For a site without a runner, set `'sayamaapps.kehai.pull' => true` and put the key in `site/config/kehai.php`:
 
 ```php
 <?php return ['key' => '…'];   // keep this file out of git
@@ -79,7 +93,7 @@ The site then fetches by itself, at most every `pullInterval` minutes, after the
 
 Kehai reads only the status, product and time of an order, and the country if enabled. It counts an order when:
 
-- its `main_product_id` is a key of `kehai.products`; other products are reported by id in the fetch output, never shown;
+- its `main_product_id` is a key of `sayamaapps.kehai.products`; other products are reported by id in the fetch output, never shown;
 - it is live: `order_type` is not `test`, and neither `is_test_order` nor `is_test_payment` is set;
 - `transaction_type`, when present, is `payment`: refunds and chargebacks do not count;
 - `is_canceled_now` is not `Y`, and `billing_status` is `completed` or `paying`;
@@ -87,13 +101,13 @@ Kehai reads only the status, product and time of an order, and the country if en
 
 ## Honesty
 
-- Only events from the source's current answer: nothing can be added or pinned, and nothing is shown from a missing or stale file (`kehai.maxStale`).
-- The bubble shows the newest events, each once per page view, at most `kehai.max`, none older than `kehai.maxAge` days.
-- The summary counts bookings, not people, and says nothing below `kehai.summaryMin`.
+- Only events from the source's current answer: nothing can be added or pinned, and nothing is shown from a missing or stale file (`sayamaapps.kehai.maxStale`).
+- The bubble shows the newest events, each once per page view, at most `sayamaapps.kehai.max`, none older than `sayamaapps.kehai.maxAge` days.
+- The summary counts bookings, not people, and says nothing below `sayamaapps.kehai.summaryMin`.
 
 ## Configuration
 
-Keys are `kehai.<name>`, flat or nested. `null` means "not set".
+Keys are `sayamaapps.kehai.<name>`, flat or nested. `null` means "not set". The 1.x spelling `kehai.<name>` is read as a fallback.
 
 | Option | Default | Description |
 |---|---|---|
@@ -121,10 +135,26 @@ Keys are `kehai.<name>`, flat or nested. `null` means "not set".
 | `language` | (auto) | `en` or `de`. Otherwise: request language, default language, Kirby's `locale`, English. |
 | `texts` | `[]` | Replace single strings per language, e.g. `['de' => ['bubble.purchase' => '…']]`. Keys: `translations/en.php`. |
 
+## Deprecations
+
+Version 2 keeps every 1.x name working. The old names are deprecated; in debug mode Kirby reports each use.
+
+| 1.x | Replacement | Removed |
+|---|---|---|
+| option `kehai.<name>` | `sayamaapps.kehai.<name>` (read first; the old one is the fallback) | next major version |
+| `kehai_option()` | `Sayamaapps\Kehai\Options::get()` | next major version |
+| `kehai_config()` | `Sayamaapps\Kehai\Plugin::config()` | next major version |
+| `kehai_i18n()` | `Sayamaapps\Kehai\Plugin::i18n()` | next major version |
+| `kehai_asset_url()` | `Sayamaapps\Kehai\Plugin::assetUrl()` | next major version |
+| classes `Kehai\…` | `Sayamaapps\Kehai\…` (class aliases) | next major version |
+| translation `kehai.<key>` | `sayamaapps.kehai.<key>` (both are registered) | next major version |
+
+Site methods `$site->kehaiBubble()` and `$site->kehaiSummary()`, the snippets `kehai/bubble` and `kehai/summary`, the route `/kehai/events.json` and the data file format do not change.
+
 ## Privacy
 
 - **No cookies, no browser storage, no third parties.** The page makes no request to Digistore24 or anyone else, and nothing is stored on the visitor's device.
-- **Anonymous events.** Each event holds only its type, the product key, the time rounded down to the minute and, with `kehai.country`, the buyer's country. Each run replaces the file, so there is no archive.
+- **Anonymous events.** Each event holds only its type, the product key, the time rounded down to the minute and, with `sayamaapps.kehai.country`, the buyer's country. Each run replaces the file, so there is no archive.
 
 ```json
 {"format": 1, "generated": "2026-10-13T09:00:12Z", "from": "2026-09-29T09:00:12Z", "source": "digistore24",
@@ -137,7 +167,7 @@ See [PRIVACY.md](PRIVACY.md) (English) and [DATENSCHUTZ.md](DATENSCHUTZ.md) (Ger
 
 ## Maintenance
 
-Tests: `composer test` (run `composer install --ignore-platform-req=ext-gd` first). Issues and pull requests are welcome, without a support promise. Report security problems privately through GitHub's vulnerability reporting. Changes: [CHANGELOG.md](CHANGELOG.md).
+Tests and checks: `composer test` runs PHPUnit; see [CONTRIBUTING](.github/CONTRIBUTING.md) for the rest. Issues and pull requests are welcome, without a support promise. Report security problems privately (see [SECURITY](.github/SECURITY.md)). Changes: [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
