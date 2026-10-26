@@ -13,22 +13,22 @@ namespace Kehai;
  */
 final class Log
 {
-    /** @var array<string, true> */
-    private static array $seen = [];
+	/** @var array<string, true> */
+	private static array $seen = [];
 
-    public static function error(string $message): void
-    {
-        $message = Text::plain($message, 500);
-        if (isset(self::$seen[$message])) {
-            return;
-        }
-        self::$seen[$message] = true;
-        error_log($message);
-    }
+	public static function error(string $message): void
+	{
+		$message = Text::plain($message, 500);
+		if (isset(self::$seen[$message])) {
+			return;
+		}
+		self::$seen[$message] = true;
+		error_log($message);
+	}
 
-    /** Forgets the messages already written (tests only). */
-    public static function forget(): void
-    {
-        self::$seen = [];
-    }
+	/** Forgets the messages already written (tests only). */
+	public static function forget(): void
+	{
+		self::$seen = [];
+	}
 }

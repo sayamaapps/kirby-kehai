@@ -22,23 +22,23 @@ namespace Kehai;
  */
 final class Text
 {
-    public static function plain(mixed $value, int $max = 200): string
-    {
-        if (!is_string($value) && !is_int($value) && !is_float($value)) {
-            return '';
-        }
-        $text = mb_scrub((string) $value, 'UTF-8');
-        $text = (string) preg_replace(['/\p{Cf}+/u', '/[\p{Cc}\p{Zl}\p{Zp}]+/u'], ['', ' '], $text);
-        $text = trim((string) preg_replace('/ {2,}/', ' ', $text));
-        if ($max > 0 && mb_strlen($text) > $max) {
-            $text = rtrim(mb_substr($text, 0, $max - 1)) . '…';
-        }
-        return $text;
-    }
+	/** True if $text contains nothing plain() would remove (tests and the check use it). */
+	public static function isPlain(string $text): bool
+	{
+		return preg_match('//u', $text) === 1 && preg_match('/[\p{Cf}\p{Zl}\p{Zp}]|[^\P{Cc}\n]/u', $text) === 0;
+	}
 
-    /** True if $text contains nothing plain() would remove (tests and the check use it). */
-    public static function isPlain(string $text): bool
-    {
-        return preg_match('//u', $text) === 1 && preg_match('/[\p{Cf}\p{Zl}\p{Zp}]|[^\P{Cc}\n]/u', $text) === 0;
-    }
+	public static function plain(mixed $value, int $max = 200): string
+	{
+		if (!is_string($value) && !is_int($value) && !is_float($value)) {
+			return '';
+		}
+		$text = mb_scrub((string)$value, 'UTF-8');
+		$text = (string)preg_replace(['/\p{Cf}+/u', '/[\p{Cc}\p{Zl}\p{Zp}]+/u'], ['', ' '], $text);
+		$text = trim((string)preg_replace('/ {2,}/', ' ', $text));
+		if ($max > 0 && mb_strlen($text) > $max) {
+			$text = rtrim(mb_substr($text, 0, $max - 1)) . '…';
+		}
+		return $text;
+	}
 }

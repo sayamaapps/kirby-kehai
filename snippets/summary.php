@@ -16,16 +16,16 @@
  * changed with `kehai.texts` (summary.purchase.*). For your own markup use
  * $site->kehaiSummary('jahreskurs') in a snippet of your own.
  *
- * @var string   $product product key or group name
+ * @var string $product product key or group name
  * @var int|null $days    period instead of kehai.summaryDays
  * @var int|null $min     minimum instead of kehai.summaryMin
  */
 if (!isset($product) || !is_string($product)) {
-    return;
+	return;
 }
-$summary = site()->kehaiSummary($product, isset($days) ? (int) $days : null, isset($min) ? (int) $min : null);
+$summary = site()->kehaiSummary($product, isset($days) ? (int)$days : null, isset($min) ? (int)$min : null);
 if ($summary === null) {
-    return;
+	return;
 }
 ?>
 <p class="kehai-summary"><?= esc($summary['text']) ?></p>
