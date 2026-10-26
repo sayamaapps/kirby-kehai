@@ -25,6 +25,9 @@ final class AutoloadTest extends TestCase
 
 		foreach (require dirname(__DIR__) . '/autoload.php' as $class => $path) {
 			$short = substr($class, strlen('sayamaapps\\kehai\\'));
+			if ($short === 'plugin') {
+				continue; // added in 2.0, no 1.x name
+			}
 			$this->assertSame(
 				strtolower('Sayamaapps\\Kehai\\' . $short),
 				strtolower((new ReflectionClass('Kehai\\' . $short))->getName()),

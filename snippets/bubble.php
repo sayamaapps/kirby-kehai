@@ -27,10 +27,11 @@ $products = isset($products) && is_array($products) ? array_values(array_filter(
 if (!site()->kehaiBubble($products)) {
 	return;
 }
-$config = kehai_config();
-$language = kehai_i18n();
-$script = kehai_asset_url('kehai.js');
-$css = $config['css'] ? kehai_asset_url('kehai.css') : null;
+$kirby = kirby();
+$config = \Sayamaapps\Kehai\Plugin::config($kirby);
+$language = \Sayamaapps\Kehai\Plugin::i18n($kirby);
+$script = \Sayamaapps\Kehai\Plugin::assetUrl($kirby, 'kehai.js');
+$css = $config['css'] ? \Sayamaapps\Kehai\Plugin::assetUrl($kirby, 'kehai.css') : null;
 if ($script === null) {
 	return;
 }

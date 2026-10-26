@@ -18,6 +18,7 @@ return [
 	'sayamaapps\\kehai\\i18n' => 'src/I18n.php',
 	'sayamaapps\\kehai\\log' => 'src/Log.php',
 	'sayamaapps\\kehai\\options' => 'src/Options.php',
+	'sayamaapps\\kehai\\plugin' => 'src/Plugin.php',
 	'sayamaapps\\kehai\\pull' => 'src/Pull.php',
 	'sayamaapps\\kehai\\source' => 'src/Source.php',
 	'sayamaapps\\kehai\\sourceexception' => 'src/SourceException.php',
