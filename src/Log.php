@@ -30,4 +30,10 @@ class Log
 		self::$seen[$message] = true;
 		error_log($message);
 	}
+
+	/** Forgets the messages already written, so a test sees them again. Kept from 1.x. */
+	public static function forget(): void
+	{
+		self::$seen = [];
+	}
 }
