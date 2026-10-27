@@ -12,6 +12,15 @@ use Sayamaapps\Kehai\Pull;
 #[CoversNothing]
 final class LegacyTest extends TestCase
 {
+	public function testCacheLimitSetsTheCacheHeader(): void
+	{
+		$this->withApp([], function (App $kirby): void {
+			kehai_cache_limit($kirby);
+			$this->assertEqualsWithDelta(time() + 15 * 60, $kirby->response()->expires(), 5, 'the page may stay cached for 15 minutes at most');
+
+		});
+	}
+
 	public function testClassAliasesResolveToTheNewClasses(): void
 	{
 		require_once dirname(__DIR__) . '/legacy.php';
@@ -22,13 +31,6 @@ final class LegacyTest extends TestCase
 		$this->assertFalse(class_exists('Kehai\\NoSuchClass'), 'an unknown 1.x name stays unknown');
 	}
 
-	public function testRouteIsA404WhileTheModuleIsOff(): void
-	{
-		$this->withApp([], function (App $kirby): void {
-			$this->assertFalse(kehai_route(), 'kehai_route() answers false (Kirby\'s 404) while kehai.active is off');
-		});
-	}
-
 	public function testKeysReadTheProductParameter(): void
 	{
 		$config = testConfig(sys_get_temp_dir());
@@ -36,23 +38,6 @@ final class LegacyTest extends TestCase
 		$this->assertSame(null, kehai_keys(null, $config), 'no parameter: all products');
 		$this->assertSame(null, kehai_keys('  ', $config), 'blank parameter: all products');
 		$this->assertSame(null, kehai_keys(['jahreskurs'], $config), 'a non-string parameter: all products');
-	}
-
-	public function testPullLaterDoesNothingWhileTheModuleIsOff(): void
-	{
-		$this->withApp([], function (App $kirby): void {
-			kehai_pull_later($kirby, testConfig(sys_get_temp_dir()));
-			$this->assertFalse(Pull::pending(), 'nothing is remembered for after the answer');
-		});
-	}
-
-	public function testCacheLimitSetsTheCacheHeader(): void
-	{
-		$this->withApp([], function (App $kirby): void {
-			kehai_cache_limit($kirby);
-			$this->assertEqualsWithDelta(time() + 15 * 60, $kirby->response()->expires(), 5, 'the page may stay cached for 15 minutes at most');
-
-		});
 	}
 
 	public function testOldFunctionsAreDeprecatedInDebugMode(): void
@@ -72,6 +57,21 @@ final class LegacyTest extends TestCase
 		}
 
 		$this->assertSame(['kehai_option() is deprecated, use Sayamaapps\Kehai\Options::get()'], $deprecations);
+	}
+
+	public function testPullLaterDoesNothingWhileTheModuleIsOff(): void
+	{
+		$this->withApp([], function (App $kirby): void {
+			kehai_pull_later($kirby, testConfig(sys_get_temp_dir()));
+			$this->assertFalse(Pull::pending(), 'nothing is remembered for after the answer');
+		});
+	}
+
+	public function testRouteIsA404WhileTheModuleIsOff(): void
+	{
+		$this->withApp([], function (App $kirby): void {
+			$this->assertFalse(kehai_route(), 'kehai_route() answers false (Kirby\'s 404) while kehai.active is off');
+		});
 	}
 
 	/** Runs $fn with a throwaway site, like the other tests. */
