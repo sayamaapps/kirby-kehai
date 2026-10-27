@@ -10,6 +10,7 @@
 		"Kirby\\Cms\\App",
 		"Kirby\\Cms\\Helpers",
 		"Kirby\\Cms\\Page",
+		"Kirby\\Exception\\Exception",
 		"Kirby\\Filesystem\\Dir",
 		"Kirby\\Filesystem\\F",
 		"Kirby\\Http\\Response",
