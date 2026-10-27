@@ -176,7 +176,7 @@ See [PRIVACY.md](PRIVACY.md) (English) and [DATENSCHUTZ.md](DATENSCHUTZ.md) (Ger
 
 ## Maintenance
 
-Tests and checks: `composer test` runs PHPUnit; see [CONTRIBUTING](.github/CONTRIBUTING.md) for the rest. CI runs the lowest and the highest dependency versions. There is no locked run, because `composer.lock` is not committed. Issues and pull requests are welcome, without a support promise. Report security problems privately (see [SECURITY](.github/SECURITY.md)). Changes: [CHANGELOG.md](CHANGELOG.md).
+Tests and checks: `composer test` runs PHPUnit; see [CONTRIBUTING](.github/CONTRIBUTING.md) for the rest. CI runs the lowest, the locked (`composer.lock`) and the highest dependency versions. After a dependency change, run `composer update` and commit the lock. Issues and pull requests are welcome, without a support promise. Report security problems privately (see [SECURITY](.github/SECURITY.md)). Changes: [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
