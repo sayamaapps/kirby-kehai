@@ -4,7 +4,7 @@ namespace Sayamaapps\Kehai;
 
 use DateTimeImmutable;
 use DateTimeZone;
-use RuntimeException;
+use Kirby\Exception\Exception;
 
 /**
  * The data file: format, the minimal fields, atomic writing, reading and
@@ -276,27 +276,27 @@ class Events
 	 * or the new one, never half of it, and a failed write leaves the old
 	 * file as it was.
 	 *
-	 * @throws RuntimeException when the directory or file cannot be written
+	 * @throws Exception when the directory or file cannot be written
 	 */
 	public static function write(string $file, array $data): void
 	{
 		$dir = dirname($file);
 		if (!is_dir($dir) && !@mkdir($dir, 0775, true) && !is_dir($dir)) {
-			throw new RuntimeException('Cannot create directory ' . $dir);
+			throw new Exception(message: 'Cannot create directory ' . $dir);
 		}
 		$json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 		if ($json === false) {
-			throw new RuntimeException('Cannot encode the data file');
+			throw new Exception(message: 'Cannot encode the data file');
 		}
 		$tmp = $dir . '/.' . basename($file) . '.' . bin2hex(random_bytes(6)) . '.tmp';
 		if (@file_put_contents($tmp, $json . "\n") === false) {
 			@unlink($tmp);
-			throw new RuntimeException('Cannot write ' . $tmp);
+			throw new Exception(message: 'Cannot write ' . $tmp);
 		}
 		@chmod($tmp, 0644);
 		if (!@rename($tmp, $file)) {
 			@unlink($tmp);
-			throw new RuntimeException('Cannot replace ' . $file);
+			throw new Exception(message: 'Cannot replace ' . $file);
 		}
 	}
 }

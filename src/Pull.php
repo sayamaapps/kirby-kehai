@@ -4,7 +4,7 @@ namespace Sayamaapps\Kehai;
 
 use Closure;
 use DateTimeImmutable;
-use RuntimeException;
+use Kirby\Exception\Exception;
 
 /**
  * Pull mode (`kehai.pull`, off by default): the site fetches by itself,
@@ -165,7 +165,7 @@ class Pull
 		return function (string $url, array $headers) use ($start, $clock, $transport): array {
 			$left = (float)self::TIMEOUT - ((float)$clock() - $start);
 			if ($left <= 0) {
-				throw new RuntimeException('the pull reached its time limit of ' . self::TIMEOUT . ' seconds');
+				throw new Exception(message: 'the pull reached its time limit of ' . self::TIMEOUT . ' seconds');
 			}
 			$timeout = (int)ceil($left);
 			$request = $transport !== null ? $transport($timeout) : Http::transport($timeout);

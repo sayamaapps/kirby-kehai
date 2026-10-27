@@ -103,7 +103,7 @@ final class EventsTest extends TestCase
 			try {
 				Events::write($blocked, $data([]));
 				throw new LogicException('write into a directory must fail');
-			} catch (RuntimeException $e) {
+			} catch (Kirby\Exception\Exception $e) {
 				holds(str_starts_with($e->getMessage(), 'Cannot replace'), 'failed rename is reported');
 			}
 			expect([], glob(dirname($blocked) . '/.*.tmp'), 'failed write removes its temporary file');
