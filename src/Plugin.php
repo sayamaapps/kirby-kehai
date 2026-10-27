@@ -126,10 +126,10 @@ class Plugin
 		}
 		self::pullLater($kirby, $config);
 
-		$language = get('lang');
+		$language = $kirby->request()->get('lang');
 		$language = self::i18n($kirby, is_string($language) && in_array($language, I18n::LANGUAGES, true) ? $language : null);
 		$now = new DateTimeImmutable('now');
-		$events = Display::bubble(Events::usable($config, $now)['events'], $config, $now, $language, self::keys(get('products'), $config));
+		$events = Display::bubble(Events::usable($config, $now)['events'], $config, $now, $language, self::keys($kirby->request()->get('products'), $config));
 		$body = [
 			'now'    => $now->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z'),
 			'texts'  => Display::times(),
