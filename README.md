@@ -149,7 +149,16 @@ Version 2 keeps every 1.x name working. The old names are deprecated; in debug m
 | classes `Kehai\…` | `Sayamaapps\Kehai\…` (class aliases) | next major version |
 | translation `kehai.<key>` | `sayamaapps.kehai.<key>` (both are registered) | next major version |
 
+The 1.x functions `kehai_pull_later()`, `kehai_cache_limit()`, `kehai_keys()` and `kehai_route()` still work and print no notice; they were never documented.
+
 Site methods `$site->kehaiBubble()` and `$site->kehaiSummary()`, the snippets `kehai/bubble` and `kehai/summary`, the route `/kehai/events.json` and the data file format do not change.
+
+## Dependencies
+
+Kehai has no runtime dependencies. Two parts are its own, on purpose:
+
+- **HTTP client** (`src/Http.php`). It fetches HTTPS addresses only, follows no redirects, reads at most 10 MB, and gives one pull a single time limit for all its pages. Kirby's `Remote` is not used for these limits.
+- **Texts** (`src/I18n.php`). The tables are PHP arrays so that `kehai fetch` and `kehai check` run without Kirby. `index.php` hands them to Kirby's translation system, so `t('kehai.…')` and the snippets use the same strings.
 
 ## Privacy
 
@@ -167,7 +176,7 @@ See [PRIVACY.md](PRIVACY.md) (English) and [DATENSCHUTZ.md](DATENSCHUTZ.md) (Ger
 
 ## Maintenance
 
-Tests and checks: `composer test` runs PHPUnit; see [CONTRIBUTING](.github/CONTRIBUTING.md) for the rest. Issues and pull requests are welcome, without a support promise. Report security problems privately (see [SECURITY](.github/SECURITY.md)). Changes: [CHANGELOG.md](CHANGELOG.md).
+Tests and checks: `composer test` runs PHPUnit; see [CONTRIBUTING](.github/CONTRIBUTING.md) for the rest. CI runs the lowest and the highest dependency versions. There is no locked run, because `composer.lock` is not committed. Issues and pull requests are welcome, without a support promise. Report security problems privately (see [SECURITY](.github/SECURITY.md)). Changes: [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
