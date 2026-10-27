@@ -18,7 +18,7 @@ All notable changes to this project are documented here. Versions follow
   **[privacy text]**. Every site using the plugin must then review its privacy
   policy.
 
-## [Unreleased]
+## [1.2.0] — 2026-10-27
 
 Code layout and tooling only. Nothing a site sees, stores or has to change; every 1.x name keeps working.
 
