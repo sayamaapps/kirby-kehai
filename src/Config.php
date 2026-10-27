@@ -56,6 +56,19 @@ class Config
 		return self::normalize([], $base)['config'];
 	}
 
+	/** `file` as written, trimmed; the default when it is not a non-blank string. */
+	private static function file(array $raw): string
+	{
+		$file = $raw['file'] ?? null;
+		return is_string($file) && trim($file) !== '' ? trim($file) : self::DEFAULT_FILE;
+	}
+
+	/** A switch is on only when it is the boolean true; "yes" or 1 do not count. */
+	private static function flag(array $raw, string $name): bool
+	{
+		return ($raw[$name] ?? false) === true;
+	}
+
 	/**
 	 * `groups`: name => ['products' => [keys], 'label' => …] for the
 	 * summary. Unknown product keys are dropped and reported.
@@ -81,14 +94,7 @@ class Config
 				$problems[] = "kehai.groups: ignoring \"$shown\" (a product has the same key)";
 				continue;
 			}
-			$members = [];
-			foreach ($entry['products'] as $key) {
-				if (is_string($key) && in_array($key, $known, true)) {
-					$members[] = $key;
-				} else {
-					$problems[] = "kehai.groups.$shown: ignoring the unknown product key \"" . Text::plain(is_scalar($key) ? (string)$key : gettype($key), 40) . '"';
-				}
-			}
+			$members = self::members($entry['products'], $known, $shown, $problems);
 			$groups[$name] = ['products' => array_values(array_unique($members)), 'label' => self::labels($entry['label'] ?? null, $name)];
 		}
 		return [$groups, $problems];
@@ -129,6 +135,26 @@ class Config
 	}
 
 	/**
+	 * The known product keys among a group's products; the others are reported.
+	 *
+	 * @param list<string> $known
+	 * @param list<string> $problems
+	 * @return list<string>
+	 */
+	private static function members(array $keys, array $known, string $shown, array &$problems): array
+	{
+		$members = [];
+		foreach ($keys as $key) {
+			if (is_string($key) && in_array($key, $known, true)) {
+				$members[] = $key;
+			} else {
+				$problems[] = "kehai.groups.$shown: ignoring the unknown product key \"" . Text::plain(is_scalar($key) ? (string)$key : gettype($key), 40) . '"';
+			}
+		}
+		return $members;
+	}
+
+	/**
 	 * @param array<string,mixed> $raw option name => value (null = not set)
 	 * @param $base project root, for a relative `file`
 	 * @return array{config: array<string,mixed>, problems: list<string>}
@@ -148,45 +174,24 @@ class Config
 			return max($min, min($max, (int)$value));
 		};
 
-		$source = $raw['source'] ?? 'digistore24';
-		if (!in_array($source, self::SOURCES, true)) {
-			$problems[] = 'kehai.source ' . Text::plain(var_export($source, true), 40) . ' is not supported; using digistore24';
-			$source = 'digistore24';
-		}
-
-		$timezone = $raw['timezone'] ?? 'Europe/Berlin';
-		try {
-			/** @var non-empty-string $name a string that is not empty; empty strings throw below */
-			$name = is_string($timezone) ? $timezone : '';
-			$timezone = (new DateTimeZone($name))->getName();
-		} catch (\Throwable) {
-			$problems[] = 'kehai.timezone is not a valid time zone; using Europe/Berlin';
-			$timezone = 'Europe/Berlin';
-		}
-
-		$position = $raw['position'] ?? 'left';
-		if (!in_array($position, ['left', 'right'], true)) {
-			$problems[] = 'kehai.position must be left or right; using left';
-			$position = 'left';
-		}
+		$source = self::source($raw, $problems);
+		$timezone = self::timezone($raw, $problems);
+		$position = self::position($raw, $problems);
 
 		[$products, $productProblems] = self::products($raw['products'] ?? []);
 		[$groups, $groupProblems] = self::groups($raw['groups'] ?? [], $products);
 		array_push($problems, ...$productProblems, ...$groupProblems);
 
-		$file = $raw['file'] ?? null;
-		$file = is_string($file) && trim($file) !== '' ? trim($file) : self::DEFAULT_FILE;
-
 		$config = [
-			'active'       => ($raw['active'] ?? false) === true,
-			'file'         => self::resolve($file, $base),
+			'active'       => self::flag($raw, 'active'),
+			'file'         => self::resolve(self::file($raw), $base),
 			'source'       => $source,
 			'products'     => $products,
 			'groups'       => $groups,
-			'country'      => ($raw['country'] ?? false) === true,
+			'country'      => self::flag($raw, 'country'),
 			'timezone'     => $timezone,
 			'maxStale'     => $int('maxStale', 48, 1, 24 * 60),
-			'bubble'       => ($raw['bubble'] ?? false) === true,
+			'bubble'       => self::flag($raw, 'bubble'),
 			'position'     => $position,
 			'delay'        => $int('delay', 8, 0, 600),
 			'max'          => $int('max', 3, 1, 20),
@@ -194,15 +199,26 @@ class Config
 			'gap'          => $int('gap', 10, 0, 600),
 			'maxAge'       => $int('maxAge', 14, 1, 90),
 			'css'          => ($raw['css'] ?? true) !== false,
-			'summary'      => ($raw['summary'] ?? false) === true,
+			'summary'      => self::flag($raw, 'summary'),
 			'summaryDays'  => $int('summaryDays', 7, 1, 90),
 			'summaryMin'   => $int('summaryMin', 3, 1, 1000),
-			'pull'         => ($raw['pull'] ?? false) === true,
+			'pull'         => self::flag($raw, 'pull'),
 			'pullInterval' => $int('pullInterval', 15, 5, 24 * 60),
 			'language'     => is_string($raw['language'] ?? null) ? strtolower($raw['language']) : null,
 			'texts'        => is_array($raw['texts'] ?? null) ? $raw['texts'] : [],
 		];
 		return ['config' => $config, 'problems' => $problems];
+	}
+
+	/** `position`: left or right; anything else is reported and replaced by left. */
+	private static function position(array $raw, array &$problems): string
+	{
+		$position = $raw['position'] ?? 'left';
+		if (!in_array($position, ['left', 'right'], true)) {
+			$problems[] = 'kehai.position must be left or right; using left';
+			return 'left';
+		}
+		return (string)$position;
 	}
 
 	/**
@@ -241,6 +257,31 @@ class Config
 	{
 		$path = trim($path);
 		return str_starts_with($path, '/') ? $path : rtrim($base, '/') . '/' . $path;
+	}
+
+	/** `source`: digistore24 is the only one; anything else is reported and replaced. */
+	private static function source(array $raw, array &$problems): string
+	{
+		$source = $raw['source'] ?? 'digistore24';
+		if (!in_array($source, self::SOURCES, true)) {
+			$problems[] = 'kehai.source ' . Text::plain(var_export($source, true), 40) . ' is not supported; using digistore24';
+			return 'digistore24';
+		}
+		return (string)$source;
+	}
+
+	/** `timezone`: a time zone name, or Europe/Berlin with a note. */
+	private static function timezone(array $raw, array &$problems): string
+	{
+		$timezone = $raw['timezone'] ?? 'Europe/Berlin';
+		try {
+			/** @var non-empty-string $name a string that is not empty; empty strings throw below */
+			$name = is_string($timezone) ? $timezone : '';
+			return (new DateTimeZone($name))->getName();
+		} catch (\Throwable) {
+			$problems[] = 'kehai.timezone is not a valid time zone; using Europe/Berlin';
+			return 'Europe/Berlin';
+		}
 	}
 
 	/**
