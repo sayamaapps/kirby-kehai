@@ -16,7 +16,8 @@ jobs:
       matrix:
         php: ['8.2', '8.3', '8.4', '8.5']
         # lowest: the oldest Kirby 5 and the oldest dependencies allowed by composer.json.
-        # highest: the newest versions. composer.lock is not committed (see .gitignore).
+        # highest: the newest versions. There is no `locked` run: composer.lock is not
+        # committed (see .gitignore), so a locked install would just repeat highest.
         deps: [lowest, highest]
     steps:
       - uses: actions/checkout@v4
@@ -78,6 +79,19 @@ jobs:
       - name: Unused dependencies
         run: composer analyze:unused
 
+      # phpcpd 6 needs sebastian/cli-parser 1, which PHPUnit 11 does not allow, so it is
+      # installed globally like php-cs below and is not a dev dependency.
+      - name: Install phpcpd
+        run: |
+          composer global require --no-interaction sebastian/phpcpd:^6.0
+          echo "$(composer global config home)/vendor/bin" >> "$GITHUB_PATH"
+
+      - name: Copy-paste detection
+        run: phpcpd src index.php legacy.php autoload.php
+
+      - name: Platform requirements
+        run: composer check-platform-reqs
+
       - name: Psalm
         run: composer analyze:psalm
 
@@ -105,6 +119,13 @@ jobs:
 
       - name: Check code style
         run: kirby-cs fix --dry-run --diff
+
+      # The fixer looks at *.php only. bin/kehai has no extension and uses tabs like the rest.
+      - name: Tabs in the CLI script
+        run: |
+          if grep -nP '^ +(?!\*)' bin/kehai; then
+            echo "::error::bin/kehai must be indented with tabs"; exit 1
+          fi
 
   script:
     name: kehai.js
