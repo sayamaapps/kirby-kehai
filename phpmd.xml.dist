@@ -4,48 +4,32 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://pmd.sf.net/ruleset/1.0.0 http://pmd.sf.net/ruleset_xml_schema.xsd"
 	xsi:noNamespaceSchemaLocation="http://pmd.sf.net/ruleset_xml_schema.xsd">
-	<description>PHP Mess Detector rules for Kehai. Every exclusion and raised threshold has its reason here.</description>
+	<description>PHP Mess Detector rules for Kehai. Every excluded rule has its reason next to it; the limits are the PHPMD defaults.</description>
 
 	<rule ref="rulesets/cleancode.xml">
-		<!-- The helper classes (Options, I18n, Log, Holidays) are static by design, as in Kirby's own code. -->
+		<!-- Config, Events, Plugin and the other classes are static services: they take the Kirby app or the configuration as an argument (IDM-2). -->
 		<exclude name="StaticAccess" />
-		<!-- Public flags such as withNote, merge and withYear are part of the public API (VER-3). -->
+		<!-- The country switch of Events::read() and of the Digistore24 source is an on/off option. -->
 		<exclude name="BooleanArgumentFlag" />
 		<!-- The assignment in a condition keeps the status cascade in reading order. -->
 		<exclude name="IfStatementAssignment" />
-		<!-- Early returns are not enforced; some guards read better with else. -->
+		<!-- Some guards read better with else than with an early return. -->
 		<exclude name="ElseExpression" />
-		<!-- Open: @ silences the warnings of file_get_contents(), mkdir() and the cache directory check, whose failure is already handled by the return value check. -->
+		<!-- @ silences the warnings of file_get_contents(), fopen(), mkdir() and unlink(); each call checks the return value. -->
 		<exclude name="ErrorControlOperator" />
 	</rule>
 
-	<!-- codesize: NPathComplexity is not used, the cyclomatic complexity below covers the same branching.
-	     ExcessiveClassComplexity is not used: the domain classes are large by design; splitting them is a follow-up. -->
-	<rule ref="rulesets/codesize.xml/CyclomaticComplexity">
-		<!-- Open: Check::run() (47) is one report that branches per check. Splitting it is a follow-up. Default 10 otherwise. -->
-		<properties>
-			<property name="reportLevel" value="48" />
-		</properties>
+	<rule ref="rulesets/codesize.xml">
+		<!-- Config, Digistore24, Events and Check are above the class limit: each one is one data source or one report, kept as one class. -->
+		<exclude name="ExcessiveClassComplexity" />
 	</rule>
-	<rule ref="rulesets/codesize.xml/ExcessiveMethodLength">
-		<!-- Open: Schedule::status() has 131 lines. Splitting it is a follow-up. -->
-		<properties>
-			<property name="minimum" value="140" />
-		</properties>
-	</rule>
-	<rule ref="rulesets/codesize.xml/ExcessiveParameterList" />
 
-	<rule ref="rulesets/design.xml">
-		<!-- Schedule, Locations and Options are the public domain classes; splitting them changes the API (VER-3). -->
-		<exclude name="TooManyPublicMethods" />
-		<exclude name="TooManyMethods" />
-		<exclude name="CouplingBetweenObjects" />
-	</rule>
+	<rule ref="rulesets/design.xml" />
 
 	<rule ref="rulesets/naming.xml">
-		<!-- Short names are the formulas of the Easter algorithm (Meeus/Jones/Butcher) and array keys in tables. -->
+		<!-- Loop and closure variables such as $e, $m and $t are short by convention. -->
 		<exclude name="ShortVariable" />
-		<!-- I18n::t() is the translation shorthand used in snippets and tests. -->
+		<!-- t() is the translation shorthand used in snippets and tests; id() is the source id. -->
 		<exclude name="ShortMethodName" />
 	</rule>
 
