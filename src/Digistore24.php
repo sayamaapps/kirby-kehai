@@ -59,6 +59,7 @@ use DateTimeZone;
  * The rules are deliberately strict: a purchase that does not count is
  * never shown, one that does not clearly count is not shown either.
  *
+ * @package   Kirby Kehai
  * @author    Simon Räder
  * @link      https://github.com/sayamaapps/kirby-kehai
  * @copyright Simon Räder

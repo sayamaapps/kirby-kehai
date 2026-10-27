@@ -12,6 +12,7 @@ use Kirby\Http\Response;
  * snippets call. Every method takes the Kirby app, so nothing reads it
  * implicitly (IDM-2). The plugin's public names are wrappers in legacy.php.
  *
+ * @package   Kirby Kehai
  * @author    Simon Räder
  * @link      https://github.com/sayamaapps/kirby-kehai
  * @copyright Simon Räder

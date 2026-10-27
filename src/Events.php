@@ -41,6 +41,7 @@ use RuntimeException;
  * a purchase that is refunded later disappears with the next run, and
  * nothing that is not in the source's current answer is ever shown.
  *
+ * @package   Kirby Kehai
  * @author    Simon Räder
  * @link      https://github.com/sayamaapps/kirby-kehai
  * @copyright Simon Räder

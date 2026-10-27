@@ -16,6 +16,7 @@ use RuntimeException;
  * most MAX_BYTES, and a hard time limit: 30 seconds for the CLI, in pull
  * mode what is left of Pull::TIMEOUT for the whole pull.
  *
+ * @package   Kirby Kehai
  * @author    Simon Räder
  * @link      https://github.com/sayamaapps/kirby-kehai
  * @copyright Simon Räder

@@ -16,6 +16,7 @@ use DateTimeImmutable;
  * Text::plain() before it is printed: the output never carries control
  * characters, escape sequences or bidi overrides, whatever the file says.
  *
+ * @package   Kirby Kehai
  * @author    Simon Räder
  * @link      https://github.com/sayamaapps/kirby-kehai
  * @copyright Simon Räder

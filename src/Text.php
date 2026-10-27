@@ -20,6 +20,7 @@ namespace Sayamaapps\Kehai;
  *    (bidi overrides, zero-width) are removed;
  *  - at most $max characters, then "…".
  *
+ * @package   Kirby Kehai
  * @author    Simon Räder
  * @link      https://github.com/sayamaapps/kirby-kehai
  * @copyright Simon Räder

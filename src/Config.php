@@ -15,6 +15,7 @@ use DateTimeZone;
  * Every display is off by default: `active`, `bubble` and `summary` must
  * each be exactly `true`.
  *
+ * @package   Kirby Kehai
  * @author    Simon Räder
  * @link      https://github.com/sayamaapps/kirby-kehai
  * @copyright Simon Räder

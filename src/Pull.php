@@ -27,6 +27,7 @@ use RuntimeException;
  *    elsewhere the visitor would wait. In pull mode the bubble snippet prints
  *    its markup even with nothing to show, so that the route gets called.
  *
+ * @package   Kirby Kehai
  * @author    Simon Räder
  * @link      https://github.com/sayamaapps/kirby-kehai
  * @copyright Simon Räder

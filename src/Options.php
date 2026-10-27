@@ -14,6 +14,7 @@ use WeakMap;
  * spellings work, flat (`'kehai.active' => true`) and nested
  * (`'kehai' => ['active' => true]`).
  *
+ * @package   Kirby Kehai
  * @author    Simon Räder
  * @link      https://github.com/sayamaapps/kirby-kehai
  * @copyright Simon Räder

@@ -17,6 +17,7 @@ use Kirby\Cms\App;
  * Exit codes: those of Fetch and Check, plus
  *   2  wrong usage, or no Kirby found
  *
+ * @package   Kirby Kehai
  * @author    Simon Räder
  * @link      https://github.com/sayamaapps/kirby-kehai
  * @copyright Simon Räder

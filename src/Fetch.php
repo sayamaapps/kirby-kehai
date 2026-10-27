@@ -19,6 +19,7 @@ use RuntimeException;
  * show: an empty list is the truth, an old list would not be. The key is
  * never printed; nothing a buyer entered is printed either.
  *
+ * @package   Kirby Kehai
  * @author    Simon Räder
  * @link      https://github.com/sayamaapps/kirby-kehai
  * @copyright Simon Räder

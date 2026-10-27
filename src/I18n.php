@@ -19,6 +19,7 @@ namespace Sayamaapps\Kehai;
  * The language is set per request (Options::language()) and defaults to
  * English. Missing keys fall back to English, then to the key.
  *
+ * @package   Kirby Kehai
  * @author    Simon Räder
  * @link      https://github.com/sayamaapps/kirby-kehai
  * @copyright Simon Räder

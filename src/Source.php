@@ -16,6 +16,12 @@ use DateTimeImmutable;
  * the site's allow list), `at` (Events::minute()) and, when asked for,
  * `country` — and its notes must not quote personal data. Events::build()
  * cleans the events once more before anything is written.
+ *
+ * @package   Kirby Kehai
+ * @author    Simon Räder
+ * @link      https://github.com/sayamaapps/kirby-kehai
+ * @copyright Simon Räder
+ * @license   https://opensource.org/licenses/MIT
  */
 interface Source
 {

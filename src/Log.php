@@ -10,6 +10,7 @@ namespace Sayamaapps\Kehai;
  * log with copies. Messages pass Text::plain() — they may quote a value
  * from the data file or the source.
  *
+ * @package   Kirby Kehai
  * @author    Simon Räder
  * @link      https://github.com/sayamaapps/kirby-kehai
  * @copyright Simon Räder
