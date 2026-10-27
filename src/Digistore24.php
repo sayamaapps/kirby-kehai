@@ -119,6 +119,12 @@ class Digistore24 implements Source
 		return $minute->setTime((int)$minute->format('H'), (int)$minute->format('i'))->modify('+60 seconds');
 	}
 
+	/** Cancelled orders. */
+	private static function cancelReason(array $purchase): string|null
+	{
+		return self::yes($purchase['is_canceled_now'] ?? $purchase['is_cancelled_now'] ?? null) ? 'cancelled (is_canceled_now)' : null;
+	}
+
 	/**
 	 * The purchases of an answer, as events and notes. Public for the
 	 * tests; events() calls it with every page.
@@ -137,50 +143,42 @@ class Digistore24 implements Source
 		$seen = [];
 		foreach ($purchases as $purchase) {
 			$reason = $this->reason($purchase);
-			if ($reason === null) {
-				$id = (string)($purchase['main_product_id'] ?? '');
-				if (!isset($this->products[$id])) {
-					$shown = preg_match(Config::ID_PATTERN, $id) ? $id : '(no valid id)';
-					$unknown[$shown] = ($unknown[$shown] ?? 0) + 1;
-					$reason = 'product not in kehai.products';
-				}
-			}
+			$reason ??= $this->productReason($purchase, $unknown);
 			$at = $reason === null ? self::time($purchase['created_at'] ?? null, $zone) : null;
-			if ($reason === null && $at === null) {
-				$reason = 'no valid created_at';
-			}
-			if ($reason === null && ($at < $from || $at?->getTimestamp() > $latest)) {
-				$reason = 'created before the window (a later payment of an older order)';
-			}
-			$order = $purchase['id'] ?? $purchase['purchase_id'] ?? null;
-			if ($reason === null && is_scalar($order) && (string)$order !== '') {
-				if (isset($seen[(string)$order])) {
-					$reason = 'listed twice';
-				}
-				$seen[(string)$order] = true;
-			}
+			$reason ??= self::timeReason($at, $from, $latest);
+			$reason ??= self::duplicateReason($purchase, $seen);
 			if ($reason !== null) {
 				$skipped[$reason] = ($skipped[$reason] ?? 0) + 1;
 				continue;
 			}
-			$event = ['type' => 'purchase', 'product' => $this->products[(string)$purchase['main_product_id']], 'at' => Events::minute($at ?? $now)];
-			$code = $purchase['vat_country'] ?? null;
-			if ($this->country && is_string($code) && preg_match('/^[A-Za-z]{2}\z/', $code)) {
-				$event['country'] = strtoupper($code);
-			}
-			$events[] = $event;
+			$events[] = $this->event($purchase, $at ?? $now);
 		}
+		return ['events' => $events, 'notes' => self::notes(count($purchases), count($events), $skipped, $unknown)];
+	}
 
-		$notes = [count($purchases) . ' purchases received, ' . count($events) . ' counted'];
-		ksort($skipped);
-		foreach ($skipped as $reason => $count) {
-			$notes[] = "  not counted: $count × $reason";
+	/** An order that is listed a second time does not count again; the first listing is kept. */
+	private static function duplicateReason(array $purchase, array &$seen): string|null
+	{
+		$order = $purchase['id'] ?? $purchase['purchase_id'] ?? null;
+		if (!is_scalar($order) || (string)$order === '') {
+			return null;
 		}
-		ksort($unknown);
-		foreach ($unknown as $id => $count) {
-			$notes[] = "  product $id is not in kehai.products ($count purchases)";
+		if (isset($seen[(string)$order])) {
+			return 'listed twice';
 		}
-		return ['events' => $events, 'notes' => $notes];
+		$seen[(string)$order] = true;
+		return null;
+	}
+
+	/** The event of a counted purchase: product, minute, and the country if the account asks for it. */
+	private function event(array $purchase, DateTimeImmutable $at): array
+	{
+		$event = ['type' => 'purchase', 'product' => $this->products[(string)$purchase['main_product_id']], 'at' => Events::minute($at)];
+		$code = $purchase['vat_country'] ?? null;
+		if ($this->country && is_string($code) && preg_match('/^[A-Za-z]{2}\z/', $code)) {
+			$event['country'] = strtoupper($code);
+		}
+		return $event;
 	}
 
 	#[\Override]
@@ -209,10 +207,38 @@ class Digistore24 implements Source
 		return $result;
 	}
 
+	/** The error for an answer that is not HTTP 200; Digistore24's message is quoted when it has one. */
+	private function httpError(int $status, mixed $decoded): SourceException
+	{
+		$message = is_array($decoded) ? ($decoded['message'] ?? null) : null;
+		return new SourceException('Digistore24 answered HTTP ' . $status . (is_string($message) && $message !== '' ? ': ' . $this->safe($message) : ''));
+	}
+
 	#[\Override]
 	public function id(): string
 	{
 		return 'digistore24';
+	}
+
+	/**
+	 * The count line and one line per reason and unknown product.
+	 *
+	 * @param array<string, int> $skipped
+	 * @param array<string, int> $unknown
+	 * @return list<string>
+	 */
+	private static function notes(int $received, int $counted, array $skipped, array $unknown): array
+	{
+		$notes = [$received . ' purchases received, ' . $counted . ' counted'];
+		ksort($skipped);
+		foreach ($skipped as $reason => $count) {
+			$notes[] = "  not counted: $count × $reason";
+		}
+		ksort($unknown);
+		foreach ($unknown as $id => $count) {
+			$notes[] = "  product $id is not in kehai.products ($count purchases)";
+		}
+		return $notes;
 	}
 
 	/**
@@ -240,18 +266,47 @@ class Digistore24 implements Source
 		$status = (int)($answer['status'] ?? 0);
 		$decoded = json_decode((string)($answer['body'] ?? ''), true);
 		if ($status !== 200) {
-			$message = is_array($decoded) ? ($decoded['message'] ?? null) : null;
-			throw new SourceException('Digistore24 answered HTTP ' . $status . (is_string($message) && $message !== '' ? ': ' . $this->safe($message) : ''));
+			throw $this->httpError($status, $decoded);
 		}
 		if (!is_array($decoded)) {
 			throw new SourceException('Digistore24 answered with a body that is not JSON');
 		}
 		if (($decoded['result'] ?? null) !== 'success') {
-			$message = $decoded['message'] ?? null;
-			throw new SourceException('Digistore24 answered result "' . $this->safe(is_scalar($decoded['result'] ?? null) ? (string)$decoded['result'] : '?', 20) . '"'
-				. (is_string($message) && $message !== '' ? ': ' . $this->safe($message) : ''));
+			throw $this->resultError($decoded);
 		}
-		$data = $decoded['data'] ?? null;
+		return self::purchaseList($decoded['data'] ?? null);
+	}
+
+	/** A billing status that is not one of the paid ones. */
+	private function paidReason(array $purchase): string|null
+	{
+		$status = strtolower((string)($purchase['billing_status'] ?? ''));
+		if (!in_array($status, self::PAID, true)) {
+			return 'billing_status ' . ($status === '' ? '(missing)' : (preg_match('/^[a-z_]{1,30}\z/', $status) ? $status : '(other)'));
+		}
+		return null;
+	}
+
+	/** The product of a purchase that is counted, or the reason it is not (and the unknown id is counted). */
+	private function productReason(array $purchase, array &$unknown): string|null
+	{
+		$id = (string)($purchase['main_product_id'] ?? '');
+		if (isset($this->products[$id])) {
+			return null;
+		}
+		$shown = preg_match(Config::ID_PATTERN, $id) ? $id : '(no valid id)';
+		$unknown[$shown] = ($unknown[$shown] ?? 0) + 1;
+		return 'product not in kehai.products';
+	}
+
+	/**
+	 * The list of purchases of `data`: a plain list, or `purchase_list` inside it.
+	 *
+	 * @return list<mixed>
+	 * @throws SourceException
+	 */
+	private static function purchaseList(mixed $data): array
+	{
 		if (is_array($data) && array_is_list($data)) {
 			return $data;
 		}
@@ -267,23 +322,15 @@ class Digistore24 implements Source
 		if (!is_array($purchase)) {
 			return 'not a purchase entry';
 		}
-		$yes = fn (mixed $value) => in_array(is_string($value) ? strtoupper(trim($value)) : $value, ['Y', 'YES', '1', 'TRUE', true, 1], true);
-		if (strtolower((string)($purchase['order_type'] ?? '')) === 'test' || $yes($purchase['is_test_order'] ?? null) || $yes($purchase['is_test_payment'] ?? null)) {
-			return 'test order';
-		}
-		$type = $purchase['transaction_type'] ?? null;
-		if ($type !== null && strtolower((string)$type) !== 'payment') {
-			$type = strtolower((string)$type);
-			return 'transaction_type ' . (preg_match('/^[a-z_]{1,30}\z/', $type) ? $type : '(other)');
-		}
-		if ($yes($purchase['is_canceled_now'] ?? $purchase['is_cancelled_now'] ?? null)) {
-			return 'cancelled (is_canceled_now)';
-		}
-		$status = strtolower((string)($purchase['billing_status'] ?? ''));
-		if (!in_array($status, self::PAID, true)) {
-			return 'billing_status ' . ($status === '' ? '(missing)' : (preg_match('/^[a-z_]{1,30}\z/', $status) ? $status : '(other)'));
-		}
-		return null;
+		return self::testReason($purchase) ?? self::typeReason($purchase) ?? self::cancelReason($purchase) ?? $this->paidReason($purchase);
+	}
+
+	/** The error for a JSON answer whose `result` is not "success". */
+	private function resultError(array $decoded): SourceException
+	{
+		$message = $decoded['message'] ?? null;
+		return new SourceException('Digistore24 answered result "' . $this->safe(is_scalar($decoded['result'] ?? null) ? (string)$decoded['result'] : '?', 20) . '"'
+			. (is_string($message) && $message !== '' ? ': ' . $this->safe($message) : ''));
 	}
 
 	/**
@@ -296,6 +343,15 @@ class Digistore24 implements Source
 		$message = $this->key === '' ? $message : str_replace($this->key, '[key]', $message);
 		$message = (string)preg_replace('/[^\s@<>"\']+@[^\s@<>"\']+/u', '[e-mail]', $message);
 		return Text::plain($message, $max);
+	}
+
+	/** Test orders and test payments. */
+	private static function testReason(array $purchase): string|null
+	{
+		if (strtolower((string)($purchase['order_type'] ?? '')) === 'test' || self::yes($purchase['is_test_order'] ?? null) || self::yes($purchase['is_test_payment'] ?? null)) {
+			return 'test order';
+		}
+		return null;
 	}
 
 	/** `created_at` as a time: "2026-10-12 14:03:11" in the account's time zone, or ISO 8601 with offset. */
@@ -319,5 +375,34 @@ class Digistore24 implements Source
 		// createFromFormat() rolls 2026-02-31 over to March; that is not a date.
 		$errors = DateTimeImmutable::getLastErrors();
 		return $time === false || ($errors !== false && $errors['warning_count'] > 0) ? null : $time;
+	}
+
+	/** Why the time of a purchase does not count, or null. */
+	private static function timeReason(DateTimeImmutable|null $at, DateTimeImmutable $from, int $latest): string|null
+	{
+		if ($at === null) {
+			return 'no valid created_at';
+		}
+		if ($at < $from || $at->getTimestamp() > $latest) {
+			return 'created before the window (a later payment of an older order)';
+		}
+		return null;
+	}
+
+	/** Anything but a payment, such as a refund. */
+	private static function typeReason(array $purchase): string|null
+	{
+		$type = $purchase['transaction_type'] ?? null;
+		if ($type !== null && strtolower((string)$type) !== 'payment') {
+			$type = strtolower((string)$type);
+			return 'transaction_type ' . (preg_match('/^[a-z_]{1,30}\z/', $type) ? $type : '(other)');
+		}
+		return null;
+	}
+
+	/** Whether a flag in the answer says yes: Y, YES, 1, TRUE (any case) or the value true. */
+	private static function yes(mixed $value): bool
+	{
+		return in_array(is_string($value) ? strtoupper(trim($value)) : $value, ['Y', 'YES', '1', 'TRUE', true, 1], true);
 	}
 }
