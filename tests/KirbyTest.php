@@ -43,7 +43,6 @@ final class KirbyTest extends TestCase
 		/** A new Kirby with these options. */
 		$kirby = function (array $options) use ($tmp): App {
 			Snippet::$cache = [];
-			Log::forget();
 			return new App([
 				'roots' => ['index' => $tmp . '/public', 'base' => $tmp, 'content' => $tmp . '/content', 'site' => $tmp . '/site'],
 				'options' => ['url' => 'http://example.invalid'] + $options,
@@ -176,9 +175,9 @@ final class KirbyTest extends TestCase
 			expect(null, $kirby(['kehai.active' => true, 'kehai.products' => $products])->site()->kehaiSummary('jahreskurs'), 'kehai.summary off: null');
 			// KEH-002: `days` longer than what the fetch reads is shortened to what the file covers.
 			$snippet = fn (array $options, array $data) => logged(fn () => trim((string)$kirby($options)->snippet('kehai/summary', $data, true)));
-			[$html, $log] = $snippet($on, ['product' => 'jahreskurs', 'days' => 30]);
-			holds($html === '<p class="kehai-summary">In the last 14 days, “Annual course” was booked 3 times</p>', 'summary snippet with days 30: "In the last 14 days", the count is the one of 14 days (' . $html . ')');
-			holds(str_contains($log, 'the summary for "jahreskurs" asks for 30 days, but the data file covers 14'), 'summary snippet with days 30: the shortening is logged');
+			[$html, $log] = $snippet($on, ['product' => 'jahreskurs', 'days' => 31]);
+			holds($html === '<p class="kehai-summary">In the last 14 days, “Annual course” was booked 3 times</p>', 'summary snippet with days 31: "In the last 14 days", the count is the one of 14 days (' . $html . ')');
+			holds(str_contains($log, 'the summary for "jahreskurs" asks for 31 days, but the data file covers 14'), 'summary snippet with days 31: the shortening is logged');
 			$kept = file_get_contents($file);
 			file_put_contents($file, json_encode(['from' => (new DateTimeImmutable('-30 days'))->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z')] + json_decode($kept, true)));
 			[$html, $log] = $snippet($on + ['kehai.summaryDays' => 30], ['product' => 'jahreskurs', 'days' => 30]);
@@ -188,7 +187,7 @@ final class KirbyTest extends TestCase
 			[$html] = $snippet($on + ['kehai.summaryMin' => 1], ['product' => 'jahreskurs', 'days' => 30]);
 			holds(str_contains($html, 'In the last 14 days'), 'a 1.0.0 file (no "from") is assumed to cover the fetch window: 30 days become 14');
 			$writeFile([['type' => 'purchase', 'product' => 'jahreskurs', 'at' => $minute('-2 hours')]], '-10 minutes', '-2 hours');
-			[$html, $log] = $snippet($on + ['kehai.summaryMin' => 1], ['product' => 'jahreskurs']);
+			[$html, $log] = $snippet($on + ['kehai.summaryMin' => 1], ['product' => 'wochenendkurs']);
 			holds($html === '' && str_contains($log, 'covers less than a day'), 'a file that covers less than a day: no summary, logged');
 
 			// ---- 5. Stale or missing file: nothing anywhere, a log line --------------------------------

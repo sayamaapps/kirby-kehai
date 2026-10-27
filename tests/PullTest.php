@@ -77,7 +77,6 @@ final class PullTest extends TestCase
 				touch(Pull::marker($file), $at('-1 hour')->getTimestamp());
 				$before = file_get_contents($file);
 				$serve([$failure]);
-				Log::forget();
 				[$outcome, $log] = logged(fn () => Pull::run($config, $key, $now, $transport, $clockFn));
 				expect('failed', $outcome, "$what: failed");
 				expect($before, file_get_contents($file), "$what: last good file untouched");
@@ -123,7 +122,6 @@ final class PullTest extends TestCase
 			$slowCalls = 0;
 			$slowTimeouts = [];
 			$slow(array_fill(0, 5, ['status' => 200, 'body' => $pageBody($fullPage)]));
-			Log::forget();
 			[$outcome, $log] = logged(fn () => Pull::run($config, $key, $now, $transport, $clockFn));
 			expect('failed', $outcome, 'slow pages: the deadline ends the pull');
 			expect([5, 3, 1], $slowTimeouts, 'slow pages: each request gets only the time that is left');
@@ -138,7 +136,6 @@ final class PullTest extends TestCase
 			$slowCalls = 0;
 			$slowTimeouts = [];
 			$slow([['status' => 200, 'body' => $pageBody($fullPage)], ['status' => 200, 'body' => $pageBody([$base])]]);
-			Log::forget();
 			[$outcome, $log] = logged(fn () => Pull::run($config, $key, $now, $transport, $clockFn));
 			expect('written', $outcome, "two pages of two seconds each fit into the deadline ($log)");
 			expect([5, 3], $slowTimeouts, 'two pages: the second request gets the three seconds that are left');
@@ -149,7 +146,6 @@ final class PullTest extends TestCase
 			$slowCalls = 0;
 			$slowTimeouts = [];
 			$slow(array_fill(0, 3, ['status' => 200, 'body' => $pageBody($fullPage)]), 4.5);
-			Log::forget();
 			[$outcome] = logged(fn () => Pull::run($config, $key, $now, $transport, $clockFn));
 			expect(['failed', [5, 1], 2], [$outcome, $slowTimeouts, $slowCalls], 'half a second left is rounded up to one (never 0 = no limit); the third page is refused');
 			$clockFn = null;

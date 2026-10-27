@@ -129,7 +129,6 @@ final class EventsTest extends TestCase
 			}
 
 			// ---- usable(): fresh, configured, not in the future ------------------------
-			Log::forget();
 			Events::write($file, $data([$event('jahreskurs', '-1 hour'), $event('unbekannt', '-1 hour'), $event('wochenendkurs', '+10 minutes'), $event('wochenendkurs', '+4 minutes')]));
 			[$usable, $log] = logged(fn () => Events::usable($config, $now));
 			expect(['events', 'from'], array_keys($usable), 'usable: events and from');
@@ -151,7 +150,6 @@ final class EventsTest extends TestCase
 			expect(1, count(Events::usable($config, $now)['events']), '47 hours old: still used');
 			expect([], logged(fn () => Events::usable(testConfig($tmp, ['maxStale' => 12]), $now))[0]['events'], 'kehai.maxStale 12');
 			unlink($file);
-			Log::forget();
 			[$usable, $log] = logged(fn () => Events::usable($config, $now));
 			holds($usable === ['events' => [], 'from' => null] && str_contains($log, 'is missing'), 'missing file: nothing, logged');
 
@@ -213,17 +211,14 @@ final class EventsTest extends TestCase
 			holds($none === null && str_contains($log, 'neither a product key nor a group'), 'summary: unknown name, nothing, logged');
 
 			// KEH-002: a period longer than the file covers is shortened, and says so.
-			Log::forget();
 			[$short, $log] = logged(fn () => Display::summary($three, $config, $now, 'de', 'jahreskurs', 30, null, $now->modify('-14 days')));
 			expect([4, 14, 'In den letzten 14 Tagen wurde „Jahreskurs“ 4-mal gebucht'], [$short['count'], $short['days'], $short['text']], 'summary: 30 days asked, the file covers 14: the result says 14');
 			holds(str_contains($log, 'the summary for "jahreskurs" asks for 30 days, but the data file covers 14') && str_contains($log, 'showing 14'), 'summary: the shortening is logged');
-			Log::forget();
-			[$old, $log] = logged(fn () => Display::summary($three, $config, $now, 'de', 'jahreskurs', 30));
+			[$old, $log] = logged(fn () => Display::summary($three, $config, $now, 'de', 'kurse', 30));
 			expect(14, $old['days'], 'summary: a file without "from" (1.0.0) covers the fetch window: 30 days become 14');
 			holds(str_contains($log, 'asks for 30 days, but the data file covers 14'), 'summary: logged for a 1.0.0 file too');
 			$wider = testConfig($tmp, ['summaryDays' => 30]);
 			expect(30, Display::summary($three, $wider, $now, 'de', 'jahreskurs')['days'], 'summary: with kehai.summaryDays 30 the 1.0.0 file covers 30 days');
-			Log::forget();
 			[$none, $log] = logged(fn () => Display::summary($three, $config, $now, 'de', 'jahreskurs', null, 1, $now->modify('-10 minutes')));
 			holds($none === null && str_contains($log, 'the summary for "jahreskurs" shows nothing, the data file covers less than a day'), 'summary: a file that covers less than a day shows nothing, logged');
 			$oneDay = logged(fn () => Display::summary($three, $config, $now, 'de', 'jahreskurs', null, 1, $now->modify('-1 day')))[0];

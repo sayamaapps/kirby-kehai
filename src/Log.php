@@ -8,8 +8,7 @@ namespace Sayamaapps\Kehai;
  * Every message is written once per process: a page reads the data file
  * for the bubble and for each summary, and a stale file must not fill the
  * log with copies. Messages pass Text::plain() — they may quote a value
- * from the data file or the source. Tests call forget() to see a message
- * again.
+ * from the data file or the source.
  *
  * @author    Simon Räder
  * @link      https://github.com/sayamaapps/kirby-kehai
@@ -29,11 +28,5 @@ class Log
 		}
 		self::$seen[$message] = true;
 		error_log($message);
-	}
-
-	/** Forgets the messages already written (tests only). */
-	public static function forget(): void
-	{
-		self::$seen = [];
 	}
 }
