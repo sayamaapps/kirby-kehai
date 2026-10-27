@@ -10,11 +10,11 @@
  *
  * Prints nothing unless Kehai and the bubble are switched on and there is a
  * real event to show — in pull mode the container and the script are printed
- * even then, see kehaiBubble(). Otherwise: the stylesheet (unless `sayamaapps.kehai.css` is
+ * even then, see kehaiBubble(). Otherwise: the stylesheet (unless `kehai.css` is
  * false), an empty container fixed to a corner and the script — both files
  * from this site, no inline script, no style attribute. The script loads
- * the entries from /kehai/events.json after `sayamaapps.kehai.delay` seconds, shows at
- * most `sayamaapps.kehai.max` of them, each once, and stops for this page view when
+ * the entries from /kehai/events.json after `kehai.delay` seconds, shows at
+ * most `kehai.max` of them, each once, and stops for this page view when
  * the visitor closes it. It stores nothing in the browser.
  *
  * The live region (role="status") is in the page from the start, so screen

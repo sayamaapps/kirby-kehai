@@ -86,7 +86,7 @@ final class CheckTest extends TestCase
 			// ---- Problems: exit 1 ---------------------------------------------------------
 			Events::write($config['file'], Events::build([$event('jahreskurs', '-1 hour')], $now->modify('-49 hours'), 'digistore24', false));
 			[$code, $out] = $check($config);
-			holds($code === Check::EXIT_PROBLEM && str_contains($out, 'older than sayamaapps.kehai.maxStale (48 hours)'), 'stale file: exit 1');
+			holds($code === Check::EXIT_PROBLEM && str_contains($out, 'older than kehai.maxStale (48 hours)'), 'stale file: exit 1');
 			unlink($config['file']);
 			[$code, $out] = $check($config);
 			holds($code === Check::EXIT_PROBLEM && str_contains($out, 'The data file is missing'), 'missing file: exit 1');
@@ -94,20 +94,20 @@ final class CheckTest extends TestCase
 			[$code, $out] = $check($config);
 			holds($code === Check::EXIT_PROBLEM && str_contains($out, 'unknown format 7'), 'unknown format: exit 1');
 			[$code, $out] = $check(testConfig($tmp, ['products' => []]));
-			holds($code === Check::EXIT_PROBLEM && str_contains($out, 'sayamaapps.kehai.products is empty'), 'no products: exit 1');
+			holds($code === Check::EXIT_PROBLEM && str_contains($out, 'kehai.products is empty'), 'no products: exit 1');
 			[$code, $out] = $check(testConfig($tmp, ['pull' => true]));
-			holds($code === Check::EXIT_PROBLEM && str_contains($out, 'sayamaapps.kehai.pull is on, but site/config/kehai.php has no key'), 'pull without key: exit 1');
-			[$code, $out] = $check($config, ['sayamaapps.kehai.position must be left or right; using left']);
-			holds($code === Check::EXIT_PROBLEM && str_contains($out, 'sayamaapps.kehai.position must be left or right'), 'configuration problems: exit 1');
+			holds($code === Check::EXIT_PROBLEM && str_contains($out, 'kehai.pull is on, but site/config/kehai.php has no key'), 'pull without key: exit 1');
+			[$code, $out] = $check($config, ['kehai.position must be left or right; using left']);
+			holds($code === Check::EXIT_PROBLEM && str_contains($out, 'kehai.position must be left or right'), 'configuration problems: exit 1');
 
 			// ---- Notes -------------------------------------------------------------------------
 			Events::write($config['file'], Events::build([$event('fremd', '-1 hour')], $now, 'digistore24', false));
 			[$code, $out] = $check(testConfig($tmp, ['active' => false]), [], true);
 			holds($code === Check::EXIT_OK, 'notes alone: exit 0');
-			holds(str_contains($out, 'sayamaapps.kehai.active is off'), 'note: switched off');
+			holds(str_contains($out, 'kehai.active is off'), 'note: switched off');
 			holds(str_contains($out, 'holds a key although pull mode is off'), 'note: key on the web server without pull mode');
 			holds(str_contains($out, '1 events for the product key "fremd"'), 'note: events of an unknown product key');
-			$pullNote = 'sayamaapps.kehai.pull is on and sayamaapps.kehai.bubble is off';
+			$pullNote = 'kehai.pull is on and kehai.bubble is off';
 			[$code, $out] = $check(testConfig($tmp, ['pull' => true, 'bubble' => false]), [], true);
 			holds($code === Check::EXIT_OK && str_contains($out, $pullNote) && str_contains($out, 'only a page render on PHP-FPM or LiteSpeed starts the fetch'), 'note: pull mode without the bubble');
 			[, $out] = $check(testConfig($tmp, ['pull' => true, 'bubble' => true]), [], true);

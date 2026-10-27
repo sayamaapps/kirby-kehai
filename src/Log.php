@@ -31,7 +31,12 @@ class Log
 		error_log($message);
 	}
 
-	/** Forgets the messages already written, so a test sees them again. Kept from 1.x. */
+	/**
+	 * Forgets the messages already written, so a test sees them again.
+	 *
+	 * @deprecated kept from 1.x for tests; not part of the public API
+	 * @internal
+	 */
 	public static function forget(): void
 	{
 		self::$seen = [];

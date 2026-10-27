@@ -4,16 +4,14 @@ namespace Sayamaapps\Kehai;
 
 use Closure;
 use Kirby\Cms\App;
-use Kirby\Cms\Helpers;
 use WeakMap;
 
 /**
- * Reads `sayamaapps.kehai.*` options from Kirby, the 1.x `kehai.*` names as
- * fallback, and hands them to Config.
+ * Reads `kehai.*` options from Kirby and hands them to Config.
  *
- * `null` counts as "not set", like Kirby's own option(), and both
- * spellings work, flat (`'sayamaapps.kehai.active' => true`) and nested
- * (`'sayamaapps' => ['kehai' => ['active' => true]]`).
+ * `null` counts as "not set", like Kirby's own option(). Flat keys
+ * (`'kehai.active' => true`) and nested ones (`'kehai' => ['active' => true]`)
+ * are both read by Kirby's option().
  *
  * @package   Kirby Kehai
  * @author    Simon Räder
@@ -23,17 +21,11 @@ use WeakMap;
  */
 class Options
 {
-	/** Option prefix of 1.x, read as a fallback until the next major version. */
-	public const LEGACY_PREFIX = 'kehai.';
-
-	/** Option prefix, read before the 1.x one. */
-	public const PREFIX = 'sayamaapps.kehai.';
+	/** Option prefix. */
+	public const PREFIX = 'kehai.';
 
 	/** The file with the API key for pull mode, in Kirby's config root. Keep it out of git. */
 	public const SECRETS = 'kehai.php';
-
-	/** Option keys already reported as deprecated in this process (debug mode only). */
-	private static array $reported = [];
 
 	/** Project root: Kirby's `base` root, otherwise the directory above `site/`. */
 	public static function base(App $kirby): string
@@ -69,27 +61,10 @@ class Options
 		return $cache[$kirby] = $result;
 	}
 
-	/**
-	 * `sayamaapps.kehai.<key>`, falling back to the 1.x spelling `kehai.<key>`
-	 * (reported as a deprecation in debug mode), then the default.
-	 */
+	/** `kehai.<key>`, or the default when it is not set. */
 	public static function get(App $kirby, string $key, mixed $default = null): mixed
 	{
-		$value = $kirby->option(self::PREFIX . $key);
-		if ($value !== null) {
-			return $value;
-		}
-
-		$legacy = $kirby->option(self::LEGACY_PREFIX . $key);
-		// Kirby does not drop repeats, so each old name is reported once per process.
-		if ($legacy !== null && !isset(self::$reported[$key]) && Helpers::deprecated(
-			'Kehai: kehai.' . $key . ' is deprecated, use sayamaapps.kehai.' . $key,
-			'option-prefix'
-		)) {
-			self::$reported[$key] = true;
-		}
-
-		return $legacy ?? $default;
+		return $kirby->option(self::PREFIX . $key) ?? $default;
 	}
 
 	/**
@@ -108,7 +83,7 @@ class Options
 	}
 
 	/**
-	 * Language of the visitor-facing text: `sayamaapps.kehai.language`, otherwise the
+	 * Language of the visitor-facing text: `kehai.language`, otherwise the
 	 * language of the current request (multi-language sites), the default
 	 * language, the first two letters of Kirby's `locale` option, English.
 	 */

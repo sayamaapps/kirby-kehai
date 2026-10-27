@@ -75,7 +75,7 @@ jobs:
         # renames, so the site never reads half a file. Some servers refuse to
         # rename over an existing file; then add `rm -f events.json;` before `mv`.
         run: |
-          lftp -c "set ftp:ssl-force true; set ssl:verify-certificate yes; \
+          lftp -c "set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate yes; \
             open -u \"$FTP_USER\",\"$FTP_PASSWORD\" \"$FTP_HOST\"; \
             mkdir -p -f \"$KEHAI_REMOTE_DIR\"; cd \"$KEHAI_REMOTE_DIR\"; \
             put \"$KEHAI_FILE\" -o events.json.upload; \

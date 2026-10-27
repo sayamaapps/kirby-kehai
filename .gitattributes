@@ -12,7 +12,6 @@
 /composer-require-checker.json export-ignore
 /composer-unused.php           export-ignore
 /composer.lock                 export-ignore
-/examples                      export-ignore
 /docs                          export-ignore
 /phpmd.xml.dist                export-ignore
 /phpunit.xml.dist              export-ignore

@@ -4,7 +4,7 @@ namespace Sayamaapps\Kehai;
 
 use Closure;
 use DateTimeImmutable;
-use Kirby\Exception\Exception;
+use RuntimeException;
 
 /**
  * `kehai fetch`: read the source, write the anonymous data file. Also the
@@ -63,7 +63,7 @@ class Fetch
 	/**
 	 * @param $config Config::normalize()['config']
 	 * @param $key API key (environment, else site/config/kehai.php)
-	 * @param $file target from --file / KEHAI_FILE (relative to $cwd), null = sayamaapps.kehai.file
+	 * @param $file target from --file / KEHAI_FILE (relative to $cwd), null = kehai.file
 	 * @param $transport null = Http::transport()
 	 * @param resource $out
 	 * @param resource $err
@@ -76,7 +76,7 @@ class Fetch
 			return self::EXIT_NO_KEY;
 		}
 		if ($config['products'] === []) {
-			fwrite($err, "sayamaapps.kehai.products is empty — nothing would be counted. Add the Digistore24 product ids to the configuration.\n");
+			fwrite($err, "kehai.products is empty — nothing would be counted. Add the Digistore24 product ids to the configuration.\n");
 			return self::EXIT_ERROR;
 		}
 		$target = $file !== null && trim($file) !== '' ? Config::resolve($file, $cwd) : $config['file'];
@@ -85,7 +85,7 @@ class Fetch
 		try {
 			$result = self::collect(self::source($config, $key, $transport ?? Http::transport()), $config, $now);
 			Events::write($target, $result['data']);
-		} catch (SourceException | Exception $e) {
+		} catch (SourceException | RuntimeException $e) {
 			fwrite($err, Text::plain(str_replace($key, '[key]', $e->getMessage()), 300) . "\n");
 			return self::EXIT_ERROR;
 		}
@@ -96,7 +96,7 @@ class Fetch
 		return self::EXIT_OK;
 	}
 
-	/** The adapter for `sayamaapps.kehai.source`. */
+	/** The adapter for `kehai.source`. */
 	public static function source(array $config, string $key, Closure $transport): Source
 	{
 		return match ($config['source']) {

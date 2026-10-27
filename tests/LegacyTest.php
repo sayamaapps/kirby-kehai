@@ -6,8 +6,8 @@ use PHPUnit\Framework\TestCase;
 use Sayamaapps\Kehai\Pull;
 
 /**
- * The 1.x names in legacy.php: the class aliases resolve on first use, and
- * the 1.x functions answer as they did in 1.x.
+ * The 1.x names in legacy.php: the class aliases exist once legacy.php is
+ * loaded, and the 1.x functions answer as they did in 1.x.
  */
 #[CoversNothing]
 final class LegacyTest extends TestCase
@@ -40,23 +40,34 @@ final class LegacyTest extends TestCase
 		$this->assertSame(null, kehai_keys(['jahreskurs'], $config), 'a non-string parameter: all products');
 	}
 
-	public function testOldFunctionsAreDeprecatedInDebugMode(): void
+	public function testOldFunctionsStaySilentInDebugMode(): void
 	{
-		$deprecations = [];
-		set_error_handler(function (int $level, string $message) use (&$deprecations): bool {
-			$deprecations[] = $message;
+		$reports = [];
+		set_error_handler(function (int $level, string $message) use (&$reports): bool {
+			$reports[] = $message;
 			return true;
 		}, E_USER_DEPRECATED);
 
 		try {
-			$this->withApp(['debug' => true, 'sayamaapps.kehai.active' => true], function (App $kirby): void {
+			$this->withApp(['debug' => true, 'kehai.active' => true], function (App $kirby): void {
 				$this->assertSame(true, kehai_option('active'), 'kehai_option() still reads the option');
 			});
 		} finally {
 			restore_error_handler();
 		}
 
-		$this->assertSame(['kehai_option() is deprecated, use Sayamaapps\Kehai\Options::get()'], $deprecations);
+		$this->assertSame([], $reports, 'the 1.x functions print no notice');
+	}
+
+	public function testClassAliasesCatchTheSourceException(): void
+	{
+		require_once dirname(__DIR__) . '/legacy.php';
+
+		try {
+			throw new Sayamaapps\Kehai\SourceException('test');
+		} catch (Kehai\SourceException $e) {
+			$this->assertSame('test', $e->getMessage(), 'catch by the 1.x name works');
+		}
 	}
 
 	public function testPullLaterDoesNothingWhileTheModuleIsOff(): void
@@ -85,6 +96,7 @@ final class LegacyTest extends TestCase
 			]);
 			$fn($kirby);
 		} finally {
+			App::destroy();
 			removeTree($tmp);
 		}
 	}

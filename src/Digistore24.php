@@ -19,12 +19,12 @@ use DateTimeZone;
  * the order id, amounts, affiliate and campaign. None of that leaves this
  * class: an event is built from four values only — the product key the
  * site configured for `main_product_id`, `created_at` rounded down to the
- * minute, and, if `sayamaapps.kehai.country` is on, `vat_country`. Notes name counts,
+ * minute, and, if `kehai.country` is on, `vat_country`. Notes name counts,
  * reasons and product ids, never anything about a buyer.
  *
  * What counts as a purchase (see the README, "What counts"):
  *
- *  - Only products on the allow list (`sayamaapps.kehai.products`); others are
+ *  - Only products on the allow list (`kehai.products`); others are
  *    counted in the notes by product id, so the site can add them.
  *  - Test orders never: the request asks for live orders only
  *    (`search[order_type]=live`), and an entry that still says
@@ -237,7 +237,7 @@ class Digistore24 implements Source
 		}
 		ksort($unknown);
 		foreach ($unknown as $id => $count) {
-			$notes[] = "  product $id is not in sayamaapps.kehai.products ($count purchases)";
+			$notes[] = "  product $id is not in kehai.products ($count purchases)";
 		}
 		return $notes;
 	}
@@ -297,7 +297,7 @@ class Digistore24 implements Source
 		}
 		$shown = preg_match(Config::ID_PATTERN, $id) ? $id : '(no valid id)';
 		$unknown[$shown] = ($unknown[$shown] ?? 0) + 1;
-		return 'product not in sayamaapps.kehai.products';
+		return 'product not in kehai.products';
 	}
 
 	/**

@@ -28,7 +28,12 @@ namespace Sayamaapps\Kehai;
  */
 class Text
 {
-	/** True if $text contains nothing plain() would remove (tests and the check use it). */
+	/**
+	 * True if $text contains nothing plain() would remove. Kept from 1.x for tests.
+	 *
+	 * @deprecated kept from 1.x for tests; not part of the public API
+	 * @internal
+	 */
 	public static function isPlain(string $text): bool
 	{
 		return preg_match('//u', $text) === 1 && preg_match('/[\p{Cf}\p{Zl}\p{Zp}]|[^\P{Cc}\n]/u', $text) === 0;

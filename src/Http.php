@@ -3,7 +3,7 @@
 namespace Sayamaapps\Kehai;
 
 use Closure;
-use Kirby\Exception\Exception;
+use RuntimeException;
 
 /**
  * The real transport for source adapters: a GET over HTTPS that returns
@@ -48,7 +48,7 @@ class Http
 		]);
 		$ok = curl_exec($handle);
 		if ($ok === false) {
-			throw new Exception(message: curl_errno($handle) === CURLE_OPERATION_TIMEDOUT ? 'timed out after ' . $timeout . ' seconds' : curl_error($handle));
+			throw new RuntimeException(curl_errno($handle) === CURLE_OPERATION_TIMEDOUT ? 'timed out after ' . $timeout . ' seconds' : curl_error($handle));
 		}
 		// No curl_close(): a no-op since PHP 8.0, deprecated in 8.5.
 		return ['status' => (int)curl_getinfo($handle, CURLINFO_RESPONSE_CODE), 'body' => $body];
@@ -73,7 +73,7 @@ class Http
 			? (http_get_last_response_headers() ?? [])
 			: ($http_response_header ?? []);
 		if ($body === false) {
-			throw new Exception(message: error_get_last()['message'] ?? 'request failed');
+			throw new RuntimeException(error_get_last()['message'] ?? 'request failed');
 		}
 		$status = 0;
 		foreach ($lines as $line) {
@@ -88,7 +88,7 @@ class Http
 	{
 		return function (string $url, array $headers) use ($timeout): array {
 			if (!str_starts_with($url, 'https://')) {
-				throw new Exception(message: 'only https addresses are fetched');
+				throw new RuntimeException('only https addresses are fetched');
 			}
 			return function_exists('curl_init') ? self::curl($url, $headers, $timeout) : self::stream($url, $headers, $timeout);
 		};

@@ -79,7 +79,7 @@ class Config
 	private static function groups(mixed $raw, array $products): array
 	{
 		if (!is_array($raw)) {
-			return [[], ['sayamaapps.kehai.groups must be an array of name => [products, label]']];
+			return [[], ['kehai.groups must be an array of name => [products, label]']];
 		}
 		$known = array_column($products, 'key');
 		$groups = [];
@@ -88,11 +88,11 @@ class Config
 			$name = (string)$name;
 			$shown = Text::plain($name, 40);
 			if (!preg_match(self::KEY_PATTERN, $name) || !is_array($entry) || !is_array($entry['products'] ?? null)) {
-				$problems[] = "sayamaapps.kehai.groups: ignoring \"$shown\" (needs a name of a-z, 0-9, - and _ and a list of products)";
+				$problems[] = "kehai.groups: ignoring \"$shown\" (needs a name of a-z, 0-9, - and _ and a list of products)";
 				continue;
 			}
 			if (in_array($name, $known, true)) {
-				$problems[] = "sayamaapps.kehai.groups: ignoring \"$shown\" (a product has the same key)";
+				$problems[] = "kehai.groups: ignoring \"$shown\" (a product has the same key)";
 				continue;
 			}
 			$members = self::members($entry['products'], $known, $shown, $problems);
@@ -149,7 +149,7 @@ class Config
 			if (is_string($key) && in_array($key, $known, true)) {
 				$members[] = $key;
 			} else {
-				$problems[] = "sayamaapps.kehai.groups.$shown: ignoring the unknown product key \"" . Text::plain(is_scalar($key) ? (string)$key : gettype($key), 40) . '"';
+				$problems[] = "kehai.groups.$shown: ignoring the unknown product key \"" . Text::plain(is_scalar($key) ? (string)$key : gettype($key), 40) . '"';
 			}
 		}
 		return $members;
@@ -216,7 +216,7 @@ class Config
 	{
 		$position = $raw['position'] ?? 'left';
 		if (!in_array($position, ['left', 'right'], true)) {
-			$problems[] = 'sayamaapps.kehai.position must be left or right; using left';
+			$problems[] = 'kehai.position must be left or right; using left';
 			return 'left';
 		}
 		return $position;
@@ -232,7 +232,7 @@ class Config
 	private static function products(mixed $raw): array
 	{
 		if (!is_array($raw)) {
-			return [[], ['sayamaapps.kehai.products must be an array of product id => [key, label]']];
+			return [[], ['kehai.products must be an array of product id => [key, label]']];
 		}
 		$products = [];
 		$problems = [];
@@ -240,12 +240,12 @@ class Config
 			$id = (string)$id;
 			$shown = Text::plain($id, 40);
 			if (!preg_match(self::ID_PATTERN, $id)) {
-				$problems[] = "sayamaapps.kehai.products: ignoring the entry \"$shown\" (not a product id)";
+				$problems[] = "kehai.products: ignoring the entry \"$shown\" (not a product id)";
 				continue;
 			}
 			$key = is_array($entry) ? ($entry['key'] ?? null) : null;
 			if (!is_string($key) || !preg_match(self::KEY_PATTERN, $key)) {
-				$problems[] = "sayamaapps.kehai.products: ignoring product $shown (key missing or not a-z, 0-9, - and _)";
+				$problems[] = "kehai.products: ignoring product $shown (key missing or not a-z, 0-9, - and _)";
 				continue;
 			}
 			$products[$id] = ['key' => $key, 'label' => self::labels($entry['label'] ?? null, $key)];
@@ -265,7 +265,7 @@ class Config
 	{
 		$source = $raw['source'] ?? 'digistore24';
 		if (!in_array($source, self::SOURCES, true)) {
-			$problems[] = 'sayamaapps.kehai.source ' . Text::plain(var_export($source, true), 40) . ' is not supported; using digistore24';
+			$problems[] = 'kehai.source ' . Text::plain(var_export($source, true), 40) . ' is not supported; using digistore24';
 			return 'digistore24';
 		}
 		return $source;
@@ -280,7 +280,7 @@ class Config
 			$name = is_string($timezone) ? $timezone : '';
 			return (new DateTimeZone($name))->getName();
 		} catch (\Throwable) {
-			$problems[] = 'sayamaapps.kehai.timezone is not a valid time zone; using Europe/Berlin';
+			$problems[] = 'kehai.timezone is not a valid time zone; using Europe/Berlin';
 			return 'Europe/Berlin';
 		}
 	}

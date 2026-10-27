@@ -44,10 +44,10 @@ class Check
 	{
 		self::switchNotes($config['active'], $config['bubble'], $config['summary'], $config['pull'], $notes);
 		if ($config['products'] === []) {
-			$problems[] = 'sayamaapps.kehai.products is empty: no purchase is counted.';
+			$problems[] = 'kehai.products is empty: no purchase is counted.';
 		}
 		if ($config['pull'] && !$keyFile) {
-			$problems[] = 'sayamaapps.kehai.pull is on, but site/config/' . Options::SECRETS . ' has no key.';
+			$problems[] = 'kehai.pull is on, but site/config/' . Options::SECRETS . ' has no key.';
 		}
 		if (!$config['pull'] && $keyFile) {
 			$notes[] = 'site/config/' . Options::SECRETS . ' holds a key although pull mode is off. With the workflow, the key does not belong on the web server.';
@@ -117,7 +117,7 @@ class Check
 		$say(count($read['events']) . ' events' . ($read['dropped'] > 0 ? ', ' . $read['dropped'] . ' invalid entries ignored' : ''), 1);
 		self::fileNotes($read, $config, $covered, $notes);
 		if ($age > $config['maxStale'] * 3600) {
-			$problems[] = 'The data file is older than sayamaapps.kehai.maxStale (' . $config['maxStale'] . ' hours): nothing is shown until the next successful fetch.';
+			$problems[] = 'The data file is older than kehai.maxStale (' . $config['maxStale'] . ' hours): nothing is shown until the next successful fetch.';
 		} elseif ($age < -Events::FUTURE_TOLERANCE) {
 			$problems[] = 'The data file claims to be generated in the future; check the clocks of the server and of the machine that runs the fetch.';
 		}
@@ -251,12 +251,12 @@ class Check
 	private static function switchNotes(bool $active, bool $bubble, bool $summary, bool $pull, array &$notes): void
 	{
 		if (!$active) {
-			$notes[] = 'sayamaapps.kehai.active is off: the site shows nothing and the route answers 404.';
+			$notes[] = 'kehai.active is off: the site shows nothing and the route answers 404.';
 		} elseif (!$bubble && !$summary) {
-			$notes[] = 'sayamaapps.kehai.bubble and sayamaapps.kehai.summary are both off: nothing is shown.';
+			$notes[] = 'kehai.bubble and kehai.summary are both off: nothing is shown.';
 		}
 		if ($active && $pull && !$bubble) {
-			$notes[] = 'sayamaapps.kehai.pull is on and sayamaapps.kehai.bubble is off: only a page render on PHP-FPM or LiteSpeed '
+			$notes[] = 'kehai.pull is on and kehai.bubble is off: only a page render on PHP-FPM or LiteSpeed '
 				. 'starts the fetch (the bubble\'s script would call the route elsewhere). On another server use the workflow.';
 		}
 	}
@@ -272,7 +272,7 @@ class Check
 		$unknown = array_count_values(array_column(array_filter($events, fn (array $e) => !in_array($e['product'], $keys, true)), 'product'));
 		ksort($unknown);
 		foreach ($unknown as $key => $count) {
-			$notes[] = "$count events for the product key \"$key\", which is not in sayamaapps.kehai.products, are ignored.";
+			$notes[] = "$count events for the product key \"$key\", which is not in kehai.products, are ignored.";
 		}
 	}
 

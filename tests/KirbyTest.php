@@ -258,6 +258,7 @@ final class KirbyTest extends TestCase
 			expect('OWN 1', trim((string)$kirby($on)->snippet('kehai/summary', ['product' => 'jahreskurs'], true)), 'site/snippets/kehai/summary.php overrides the package snippet');
 
 		} finally {
+			App::destroy();
 			removeTree($tmp);
 		}
 	}

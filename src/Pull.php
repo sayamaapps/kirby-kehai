@@ -4,10 +4,10 @@ namespace Sayamaapps\Kehai;
 
 use Closure;
 use DateTimeImmutable;
-use Kirby\Exception\Exception;
+use RuntimeException;
 
 /**
- * Pull mode (`sayamaapps.kehai.pull`, off by default): the site fetches by itself,
+ * Pull mode (`kehai.pull`, off by default): the site fetches by itself,
  * with the key from site/config/kehai.php.
  *
  *  - At most every `pullInterval` minutes (default 15). A marker file next
@@ -36,6 +36,25 @@ use Kirby\Exception\Exception;
 class Pull
 {
 	public const TIMEOUT = 5;
+
+	/**
+	 * Makes the transport for a timeout: Http::transport() unless a test
+	 * replaces the network. fn (int $timeout): Closure. Kept from 1.x, as a
+	 * test seam; the $transport parameter of run() does the same.
+	 *
+	 * @deprecated use the $transport parameter of run()
+	 * @internal
+	 */
+	public static ?Closure $transports = null;
+
+	/**
+	 * Seconds on a monotonic clock, fn (): float. Kept from 1.x, as a test
+	 * seam; the $clock parameter of run() does the same.
+	 *
+	 * @deprecated use the $clock parameter of run()
+	 * @internal
+	 */
+	public static ?Closure $clock = null;
 
 	/** @var array{0: array, 1: string}|null */
 	private static array|null $pending = null;
@@ -96,6 +115,12 @@ class Pull
 		return dirname($file) . '/.kehai-pull';
 	}
 
+	/**
+	 * Whether a pull is remembered for the end of the request.
+	 *
+	 * @deprecated kept from 1.x for tests; not part of the public API
+	 * @internal
+	 */
 	public static function pending(): bool
 	{
 		return self::$pending !== null;
@@ -117,7 +142,8 @@ class Pull
 		Closure|null $clock = null,
 	): string {
 		$now ??= new DateTimeImmutable('now');
-		$clock ??= static fn (): float => (float)hrtime(true) / 1e9;
+		$transport ??= self::$transports;
+		$clock ??= self::$clock ?? static fn (): float => (float)hrtime(true) / 1e9;
 		if (!self::due($config, $now->getTimestamp())) {
 			return 'not due';
 		}
@@ -165,7 +191,7 @@ class Pull
 		return function (string $url, array $headers) use ($start, $clock, $transport): array {
 			$left = (float)self::TIMEOUT - ((float)$clock() - $start);
 			if ($left <= 0) {
-				throw new Exception(message: 'the pull reached its time limit of ' . self::TIMEOUT . ' seconds');
+				throw new RuntimeException('the pull reached its time limit of ' . self::TIMEOUT . ' seconds');
 			}
 			$timeout = (int)ceil($left);
 			$request = $transport !== null ? $transport($timeout) : Http::transport($timeout);

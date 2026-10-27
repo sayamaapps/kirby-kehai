@@ -4,7 +4,7 @@ namespace Sayamaapps\Kehai;
 
 use DateTimeImmutable;
 use DateTimeZone;
-use Kirby\Exception\Exception;
+use RuntimeException;
 
 /**
  * The data file: format, the minimal fields, atomic writing, reading and
@@ -33,7 +33,7 @@ use Kirby\Exception\Exception;
  * An event has exactly these fields. `type` is one of TYPES, `product` a
  * product key from the site's configuration (never the source's id or
  * name), `at` the time in UTC rounded down to the minute, `country` a
- * two-letter code and only present when `sayamaapps.kehai.country` is on. clean() is
+ * two-letter code and only present when `kehai.country` is on. clean() is
  * the one gate every event passes, when it is written and when it is read:
  * whatever else a source adapter or a hand-edited file carries is dropped.
  *
@@ -249,7 +249,7 @@ class Events
 		$age = $now->getTimestamp() - $generated->getTimestamp();
 		if ($age > $config['maxStale'] * 3600) {
 			Log::error('Kehai: nothing shown, the data file ' . $config['file'] . ' was last updated ' . intdiv($age, 3600)
-				. ' hours ago (sayamaapps.kehai.maxStale is ' . $config['maxStale'] . ')');
+				. ' hours ago (kehai.maxStale is ' . $config['maxStale'] . ')');
 			return ['events' => [], 'from' => null];
 		}
 		$limit = $now->getTimestamp() + self::FUTURE_TOLERANCE;
@@ -276,27 +276,27 @@ class Events
 	 * or the new one, never half of it, and a failed write leaves the old
 	 * file as it was.
 	 *
-	 * @throws Exception when the directory or file cannot be written
+	 * @throws RuntimeException when the directory or file cannot be written
 	 */
 	public static function write(string $file, array $data): void
 	{
 		$dir = dirname($file);
 		if (!is_dir($dir) && !@mkdir($dir, 0775, true) && !is_dir($dir)) {
-			throw new Exception(message: 'Cannot create directory ' . $dir);
+			throw new RuntimeException('Cannot create directory ' . $dir);
 		}
 		$json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 		if ($json === false) {
-			throw new Exception(message: 'Cannot encode the data file');
+			throw new RuntimeException('Cannot encode the data file');
 		}
 		$tmp = $dir . '/.' . basename($file) . '.' . bin2hex(random_bytes(6)) . '.tmp';
 		if (@file_put_contents($tmp, $json . "\n") === false) {
 			@unlink($tmp);
-			throw new Exception(message: 'Cannot write ' . $tmp);
+			throw new RuntimeException('Cannot write ' . $tmp);
 		}
 		@chmod($tmp, 0644);
 		if (!@rename($tmp, $file)) {
 			@unlink($tmp);
-			throw new Exception(message: 'Cannot replace ' . $file);
+			throw new RuntimeException('Cannot replace ' . $file);
 		}
 	}
 }

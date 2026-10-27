@@ -2,7 +2,7 @@
 
 namespace Sayamaapps\Kehai;
 
-use Kirby\Exception\Exception;
+use RuntimeException;
 
 /**
  * A failed fetch. The message is safe to print: no key, no personal data, no control characters.
@@ -13,6 +13,6 @@ use Kirby\Exception\Exception;
  * @copyright Simon Räder
  * @license   https://opensource.org/licenses/MIT
  */
-class SourceException extends Exception
+class SourceException extends RuntimeException
 {
 }
