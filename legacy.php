@@ -74,3 +74,37 @@ if (Kirby\Cms\Helpers::hasOverride('kehai_asset_url') === false) {
 		return Sayamaapps\Kehai\Plugin::assetUrl(Kirby\Cms\App::instance(), $file);
 	}
 }
+
+// The four 1.x functions that were never documented. Same behaviour as in 1.x,
+// so no deprecation notice.
+if (Kirby\Cms\Helpers::hasOverride('kehai_pull_later') === false) {
+	/** In pull mode: remember a fetch for after the answer, if one is due. */
+	function kehai_pull_later(Kirby\Cms\App $kirby, array $config): void
+	{
+		Sayamaapps\Kehai\Plugin::pullLater($kirby, $config);
+	}
+}
+
+if (Kirby\Cms\Helpers::hasOverride('kehai_cache_limit') === false) {
+	/** A page with Kehai content stays in the page cache for 15 minutes at most. */
+	function kehai_cache_limit(Kirby\Cms\App $kirby): void
+	{
+		Sayamaapps\Kehai\Plugin::cacheLimit($kirby);
+	}
+}
+
+if (Kirby\Cms\Helpers::hasOverride('kehai_keys') === false) {
+	/** Product keys from the route's `products` parameter (comma separated), or null for all. */
+	function kehai_keys(mixed $value, array $config): array|null
+	{
+		return Sayamaapps\Kehai\Plugin::keys($value, $config);
+	}
+}
+
+if (Kirby\Cms\Helpers::hasOverride('kehai_route') === false) {
+	/** GET /kehai/events.json, as in 1.x. */
+	function kehai_route(): Kirby\Http\Response|false
+	{
+		return Sayamaapps\Kehai\Plugin::route(Kirby\Cms\App::instance());
+	}
+}
