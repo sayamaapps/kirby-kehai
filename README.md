@@ -137,7 +137,7 @@ Keys are `sayamaapps.kehai.<name>`, flat or nested. `null` means "not set". The 
 
 ## Deprecations
 
-Version 2 keeps every 1.x name working. The old names are deprecated; in debug mode Kirby reports each use.
+Every 1.x name keeps working until the next major version. The old names are deprecated; in debug mode Kirby reports each use.
 
 | 1.x | Replacement | Removed |
 |---|---|---|

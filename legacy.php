@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Names of the 1.x API, kept until 2.0 (README, Deprecations).
+ * Names of the 1.x API, kept until the next major version (README, Deprecations).
  *
  * Loaded once by index.php, after the class map is registered. Class aliases and
  * function wrappers only; no logic here.

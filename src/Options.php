@@ -26,7 +26,7 @@ class Options
 	/** Option prefix of 1.x, read as a fallback until the next major version. */
 	public const LEGACY_PREFIX = 'kehai.';
 
-	/** Option prefix since 2.0 (OPT-1). */
+	/** Option prefix, read before the 1.x one. */
 	public const PREFIX = 'sayamaapps.kehai.';
 
 	/** The file with the API key for pull mode, in Kirby's config root. Keep it out of git. */
