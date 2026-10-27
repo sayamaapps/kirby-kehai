@@ -15,8 +15,13 @@ use RuntimeException;
  * redirects (a redirect would carry the key header to another host), at
  * most MAX_BYTES, and a hard time limit: 30 seconds for the CLI, in pull
  * mode what is left of Pull::TIMEOUT for the whole pull.
+ *
+ * @author    Simon Räder
+ * @link      https://github.com/sayamaapps/kirby-kehai
+ * @copyright Simon Räder
+ * @license   https://opensource.org/licenses/MIT
  */
-final class Http
+class Http
 {
 	public const MAX_BYTES = 10_000_000;
 	public const USER_AGENT = 'kirby-kehai/1.1 (+https://github.com/sayamaapps/kirby-kehai)';

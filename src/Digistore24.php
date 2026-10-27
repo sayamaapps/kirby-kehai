@@ -58,8 +58,13 @@ use DateTimeZone;
  *
  * The rules are deliberately strict: a purchase that does not count is
  * never shown, one that does not clearly count is not shown either.
+ *
+ * @author    Simon Räder
+ * @link      https://github.com/sayamaapps/kirby-kehai
+ * @copyright Simon Räder
+ * @license   https://opensource.org/licenses/MIT
  */
-final class Digistore24 implements Source
+class Digistore24 implements Source
 {
 	public const ENDPOINT = 'https://www.digistore24.com/api/call/listPurchases/json';
 	public const MAX_PAGES = 20;

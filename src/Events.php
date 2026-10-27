@@ -40,8 +40,13 @@ use RuntimeException;
  * Every fetch replaces the file completely (no merge with earlier runs), so
  * a purchase that is refunded later disappears with the next run, and
  * nothing that is not in the source's current answer is ever shown.
+ *
+ * @author    Simon Räder
+ * @link      https://github.com/sayamaapps/kirby-kehai
+ * @copyright Simon Räder
+ * @license   https://opensource.org/licenses/MIT
  */
-final class Events
+class Events
 {
 	private const AT_PATTERN = '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00Z\z/';
 	public const FORMAT = 1;

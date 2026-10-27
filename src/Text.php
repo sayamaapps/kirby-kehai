@@ -19,8 +19,13 @@ namespace Sayamaapps\Kehai;
  *    paragraph separators become one space, invisible format characters
  *    (bidi overrides, zero-width) are removed;
  *  - at most $max characters, then "…".
+ *
+ * @author    Simon Räder
+ * @link      https://github.com/sayamaapps/kirby-kehai
+ * @copyright Simon Räder
+ * @license   https://opensource.org/licenses/MIT
  */
-final class Text
+class Text
 {
 	/** True if $text contains nothing plain() would remove (tests and the check use it). */
 	public static function isPlain(string $text): bool

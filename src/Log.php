@@ -10,8 +10,13 @@ namespace Sayamaapps\Kehai;
  * log with copies. Messages pass Text::plain() — they may quote a value
  * from the data file or the source. Tests call forget() to see a message
  * again.
+ *
+ * @author    Simon Räder
+ * @link      https://github.com/sayamaapps/kirby-kehai
+ * @copyright Simon Räder
+ * @license   https://opensource.org/licenses/MIT
  */
-final class Log
+class Log
 {
 	/** @var array<string, true> */
 	private static array $seen = [];

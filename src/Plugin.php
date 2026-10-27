@@ -17,7 +17,7 @@ use Kirby\Http\Response;
  * @copyright Simon Räder
  * @license   https://opensource.org/licenses/MIT
  */
-final class Plugin
+class Plugin
 {
 	/** Cache limit of a page that shows Kehai content, in minutes. */
 	private const PAGE_CACHE_MINUTES = 15;

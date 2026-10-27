@@ -26,8 +26,13 @@ use RuntimeException;
  *    background); a page render only where such a function exists, since
  *    elsewhere the visitor would wait. In pull mode the bubble snippet prints
  *    its markup even with nothing to show, so that the route gets called.
+ *
+ * @author    Simon Räder
+ * @link      https://github.com/sayamaapps/kirby-kehai
+ * @copyright Simon Räder
+ * @license   https://opensource.org/licenses/MIT
  */
-final class Pull
+class Pull
 {
 	public const TIMEOUT = 5;
 

@@ -14,8 +14,13 @@ use DateTimeImmutable;
  * Every value that comes from the configuration or the data file passes
  * Text::plain() before it is printed: the output never carries control
  * characters, escape sequences or bidi overrides, whatever the file says.
+ *
+ * @author    Simon Räder
+ * @link      https://github.com/sayamaapps/kirby-kehai
+ * @copyright Simon Räder
+ * @license   https://opensource.org/licenses/MIT
  */
-final class Check
+class Check
 {
 	public const EXIT_OK = 0;
 	public const EXIT_PROBLEM = 1;

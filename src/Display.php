@@ -11,8 +11,13 @@ use DateTimeImmutable;
  * Nothing here adds, repeats or rounds up: the bubble gets the newest
  * real events, each once, not older than `maxAge` days; the summary counts
  * real events in its period and says nothing below `summaryMin`.
+ *
+ * @author    Simon Räder
+ * @link      https://github.com/sayamaapps/kirby-kehai
+ * @copyright Simon Räder
+ * @license   https://opensource.org/licenses/MIT
  */
-final class Display
+class Display
 {
 	/**
 	 * Entries for the bubble, newest first, at most `max`.

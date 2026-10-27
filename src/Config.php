@@ -14,8 +14,13 @@ use DateTimeZone;
  *
  * Every display is off by default: `active`, `bubble` and `summary` must
  * each be exactly `true`.
+ *
+ * @author    Simon Räder
+ * @link      https://github.com/sayamaapps/kirby-kehai
+ * @copyright Simon Räder
+ * @license   https://opensource.org/licenses/MIT
  */
-final class Config
+class Config
 {
 	/** Default data file, relative to the project root. */
 	public const DEFAULT_FILE = 'storage/kehai/events.json';

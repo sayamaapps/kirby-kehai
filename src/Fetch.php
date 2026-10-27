@@ -18,8 +18,13 @@ use RuntimeException;
  * Every run replaces the file completely, also when there is nothing to
  * show: an empty list is the truth, an old list would not be. The key is
  * never printed; nothing a buyer entered is printed either.
+ *
+ * @author    Simon Räder
+ * @link      https://github.com/sayamaapps/kirby-kehai
+ * @copyright Simon Räder
+ * @license   https://opensource.org/licenses/MIT
  */
-final class Fetch
+class Fetch
 {
 	public const ENV_FILE = 'KEHAI_FILE';
 	public const ENV_KEY = 'DIGISTORE24_API_KEY';

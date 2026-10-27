@@ -13,8 +13,13 @@ use WeakMap;
  * `null` counts as "not set", like Kirby's own option(), and both
  * spellings work, flat (`'kehai.active' => true`) and nested
  * (`'kehai' => ['active' => true]`).
+ *
+ * @author    Simon Räder
+ * @link      https://github.com/sayamaapps/kirby-kehai
+ * @copyright Simon Räder
+ * @license   https://opensource.org/licenses/MIT
  */
-final class Options
+class Options
 {
 	/** Option prefix of 1.x, read as a fallback until the next major version. */
 	public const LEGACY_PREFIX = 'kehai.';

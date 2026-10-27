@@ -18,8 +18,13 @@ namespace Sayamaapps\Kehai;
  *
  * The language is set per request (Options::language()) and defaults to
  * English. Missing keys fall back to English, then to the key.
+ *
+ * @author    Simon Räder
+ * @link      https://github.com/sayamaapps/kirby-kehai
+ * @copyright Simon Räder
+ * @license   https://opensource.org/licenses/MIT
  */
-final class I18n
+class I18n
 {
 	/** Languages Kehai ships. English is the default and the fallback. */
 	public const LANGUAGES = ['en', 'de'];
