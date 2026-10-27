@@ -6,6 +6,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Sayamaapps\Kehai\Events;
 use Sayamaapps\Kehai\Log;
+use Sayamaapps\Kehai\Options;
 use Sayamaapps\Kehai\Pull;
 
 /**
