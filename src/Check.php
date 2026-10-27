@@ -35,12 +35,13 @@ class Check
 	/**
 	 * Notes and problems that follow from the configuration alone.
 	 *
+	 * @param array<string, mixed> $config
 	 * @param list<string> $problems
 	 * @param list<string> $notes
 	 */
 	private static function checkConfiguration(array $config, bool $keyFile, array &$problems, array &$notes): void
 	{
-		self::switchNotes($config, $notes);
+		self::switchNotes($config['active'], $config['bubble'], $config['summary'], $config['pull'], $notes);
 		if ($config['products'] === []) {
 			$problems[] = 'kehai.products is empty: no purchase is counted.';
 		}
@@ -131,6 +132,7 @@ class Check
 	private static function describeEvents(Closure $say, array $config, DateTimeImmutable $now, array $data, array &$notes): void
 	{
 		$read = $data['read'];
+		/** @var list<array> $events */
 		$events = $read['error'] === null ? $read['events'] : [];
 		$keys = Config::keys($config);
 		$limit = $now->getTimestamp() + Events::FUTURE_TOLERANCE;
@@ -245,14 +247,14 @@ class Check
 	 *
 	 * @param list<string> $notes
 	 */
-	private static function switchNotes(array $config, array &$notes): void
+	private static function switchNotes(bool $active, bool $bubble, bool $summary, bool $pull, array &$notes): void
 	{
-		if (!$config['active']) {
+		if (!$active) {
 			$notes[] = 'kehai.active is off: the site shows nothing and the route answers 404.';
-		} elseif (!$config['bubble'] && !$config['summary']) {
+		} elseif (!$bubble && !$summary) {
 			$notes[] = 'kehai.bubble and kehai.summary are both off: nothing is shown.';
 		}
-		if ($config['active'] && $config['pull'] && !$config['bubble']) {
+		if ($active && $pull && !$bubble) {
 			$notes[] = 'kehai.pull is on and kehai.bubble is off: only a page render on PHP-FPM or LiteSpeed '
 				. 'starts the fetch (the bubble\'s script would call the route elsewhere). On another server use the workflow.';
 		}
@@ -261,7 +263,6 @@ class Check
 	/**
 	 * A note for each product key in the data file that the configuration does not know.
 	 *
-	 * @param list<array> $events
 	 * @param list<string> $keys
 	 * @param list<string> $notes
 	 */

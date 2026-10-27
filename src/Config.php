@@ -157,10 +157,10 @@ class Config
 	/**
 	 * @param array<string,mixed> $raw option name => value (null = not set)
 	 * @param $base project root, for a relative `file`
-	 * @return array{config: array<string,mixed>, problems: list<string>}
 	 */
 	public static function normalize(array $raw, string $base): array
 	{
+		/** @var list<string> $problems */
 		$problems = [];
 		$int = function (string $name, int $default, int $min, int $max) use ($raw, &$problems): int {
 			$value = $raw[$name] ?? null;
@@ -218,7 +218,7 @@ class Config
 			$problems[] = 'kehai.position must be left or right; using left';
 			return 'left';
 		}
-		return (string)$position;
+		return $position;
 	}
 
 	/**
@@ -267,7 +267,7 @@ class Config
 			$problems[] = 'kehai.source ' . Text::plain(var_export($source, true), 40) . ' is not supported; using digistore24';
 			return 'digistore24';
 		}
-		return (string)$source;
+		return $source;
 	}
 
 	/** `timezone`: a time zone name, or Europe/Berlin with a note. */
