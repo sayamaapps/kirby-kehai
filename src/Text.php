@@ -1,6 +1,6 @@
 <?php
 
-namespace Kehai;
+namespace Sayamaapps\Kehai;
 
 /**
  * Text that is printed to a terminal or written to a log (Kirby-free).
@@ -19,26 +19,37 @@ namespace Kehai;
  *    paragraph separators become one space, invisible format characters
  *    (bidi overrides, zero-width) are removed;
  *  - at most $max characters, then "…".
+ *
+ * @package   Kirby Kehai
+ * @author    Simon Räder
+ * @link      https://github.com/sayamaapps/kirby-kehai
+ * @copyright Simon Räder
+ * @license   https://opensource.org/licenses/MIT
  */
-final class Text
+class Text
 {
-    public static function plain(mixed $value, int $max = 200): string
-    {
-        if (!is_string($value) && !is_int($value) && !is_float($value)) {
-            return '';
-        }
-        $text = mb_scrub((string) $value, 'UTF-8');
-        $text = (string) preg_replace(['/\p{Cf}+/u', '/[\p{Cc}\p{Zl}\p{Zp}]+/u'], ['', ' '], $text);
-        $text = trim((string) preg_replace('/ {2,}/', ' ', $text));
-        if ($max > 0 && mb_strlen($text) > $max) {
-            $text = rtrim(mb_substr($text, 0, $max - 1)) . '…';
-        }
-        return $text;
-    }
+	/**
+	 * True if $text contains nothing plain() would remove. Kept from 1.x for tests.
+	 *
+	 * @deprecated kept from 1.x for tests; not part of the public API
+	 * @internal
+	 */
+	public static function isPlain(string $text): bool
+	{
+		return preg_match('//u', $text) === 1 && preg_match('/[\p{Cf}\p{Zl}\p{Zp}]|[^\P{Cc}\n]/u', $text) === 0;
+	}
 
-    /** True if $text contains nothing plain() would remove (tests and the check use it). */
-    public static function isPlain(string $text): bool
-    {
-        return preg_match('//u', $text) === 1 && preg_match('/[\p{Cf}\p{Zl}\p{Zp}]|[^\P{Cc}\n]/u', $text) === 0;
-    }
+	public static function plain(mixed $value, int $max = 200): string
+	{
+		if (!is_string($value) && !is_int($value) && !is_float($value)) {
+			return '';
+		}
+		$text = mb_scrub((string)$value, 'UTF-8');
+		$text = (string)preg_replace(['/\p{Cf}+/u', '/[\p{Cc}\p{Zl}\p{Zp}]+/u'], ['', ' '], $text);
+		$text = trim((string)preg_replace('/ {2,}/', ' ', $text));
+		if ($max > 0 && mb_strlen($text) > $max) {
+			$text = rtrim(mb_substr($text, 0, $max - 1)) . '…';
+		}
+		return $text;
+	}
 }

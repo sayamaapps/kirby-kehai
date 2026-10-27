@@ -1,7 +1,7 @@
 # Kehai: technische Grundlage für den Datenschutztext
 
-(English version: [PRIVACY.md](PRIVACY.md). Optionen heißen `kehai.*`; die
-Namen stehen im [README](README.md#configuration).)
+(English version: [PRIVACY.md](../PRIVACY.md). Optionen heißen `kehai.*`; die
+Namen stehen im [README](../README.md#configuration).)
 
 Dieser Baustein beschreibt die Implementierung. Rechtsgrundlage,
 Interessenabwägung und die Formulierung müssen vor Veröffentlichung für den

@@ -25,30 +25,31 @@
  */
 $products = isset($products) && is_array($products) ? array_values(array_filter($products, 'is_string')) : null;
 if (!site()->kehaiBubble($products)) {
-    return;
+	return;
 }
-$config = kehai_config();
-$language = kehai_i18n();
-$script = kehai_asset_url('kehai.js');
-$css = $config['css'] ? kehai_asset_url('kehai.css') : null;
+$kirby = kirby();
+$config = \Sayamaapps\Kehai\Plugin::config($kirby);
+$language = \Sayamaapps\Kehai\Plugin::i18n($kirby);
+$script = \Sayamaapps\Kehai\Plugin::assetUrl($kirby, 'kehai.js');
+$css = $config['css'] ? \Sayamaapps\Kehai\Plugin::assetUrl($kirby, 'kehai.css') : null;
 if ($script === null) {
-    return;
+	return;
 }
 $query = ['lang' => $language];
 if ($products !== null) {
-    $query['products'] = implode(',', $products);
+	$query['products'] = implode(',', $products);
 }
 $data = [
-    'data-kehai-src'      => url('kehai/events.json') . '?' . http_build_query($query),
-    'data-kehai-delay'    => $config['delay'],
-    'data-kehai-max'      => $config['max'],
-    'data-kehai-duration' => $config['duration'],
-    'data-kehai-gap'      => $config['gap'],
+	'data-kehai-src'      => url('kehai/events.json') . '?' . http_build_query($query),
+	'data-kehai-delay'    => $config['delay'],
+	'data-kehai-max'      => $config['max'],
+	'data-kehai-duration' => $config['duration'],
+	'data-kehai-gap'      => $config['gap'],
 ];
 ?>
 <?php if ($css) : ?><link rel="stylesheet" href="<?= esc($css) ?>"><?php endif ?>
-<div class="kehai kehai-<?= esc($config['position']) ?>" data-kehai<?php foreach ($data as $name => $value) : ?> <?= $name ?>="<?= esc((string) $value) ?>"<?php endforeach ?>>
+<div class="kehai kehai-<?= esc($config['position']) ?>" data-kehai<?php foreach ($data as $name => $value) : ?> <?= $name ?>="<?= esc((string)$value) ?>"<?php endforeach ?>>
   <p class="kehai-text" role="status" aria-live="polite" aria-atomic="true"></p>
-  <button type="button" class="kehai-close" aria-label="<?= esc(\Kehai\I18n::t('close')) ?>" hidden><span aria-hidden="true">×</span></button>
+  <button type="button" class="kehai-close" aria-label="<?= esc(\Sayamaapps\Kehai\I18n::t('close')) ?>" hidden><span aria-hidden="true">×</span></button>
 </div>
 <script src="<?= esc($script) ?>" defer></script>

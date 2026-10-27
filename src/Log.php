@@ -1,6 +1,6 @@
 <?php
 
-namespace Kehai;
+namespace Sayamaapps\Kehai;
 
 /**
  * The one place where Kehai writes to the PHP error log (Kirby-free).
@@ -8,27 +8,37 @@ namespace Kehai;
  * Every message is written once per process: a page reads the data file
  * for the bubble and for each summary, and a stale file must not fill the
  * log with copies. Messages pass Text::plain() — they may quote a value
- * from the data file or the source. Tests call forget() to see a message
- * again.
+ * from the data file or the source.
+ *
+ * @package   Kirby Kehai
+ * @author    Simon Räder
+ * @link      https://github.com/sayamaapps/kirby-kehai
+ * @copyright Simon Räder
+ * @license   https://opensource.org/licenses/MIT
  */
-final class Log
+class Log
 {
-    /** @var array<string, true> */
-    private static array $seen = [];
+	/** @var array<string, true> */
+	private static array $seen = [];
 
-    public static function error(string $message): void
-    {
-        $message = Text::plain($message, 500);
-        if (isset(self::$seen[$message])) {
-            return;
-        }
-        self::$seen[$message] = true;
-        error_log($message);
-    }
+	public static function error(string $message): void
+	{
+		$message = Text::plain($message, 500);
+		if (isset(self::$seen[$message])) {
+			return;
+		}
+		self::$seen[$message] = true;
+		error_log($message);
+	}
 
-    /** Forgets the messages already written (tests only). */
-    public static function forget(): void
-    {
-        self::$seen = [];
-    }
+	/**
+	 * Forgets the messages already written, so a test sees them again.
+	 *
+	 * @deprecated kept from 1.x for tests; not part of the public API
+	 * @internal
+	 */
+	public static function forget(): void
+	{
+		self::$seen = [];
+	}
 }

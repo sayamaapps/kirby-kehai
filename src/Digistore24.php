@@ -1,6 +1,6 @@
 <?php
 
-namespace Kehai;
+namespace Sayamaapps\Kehai;
 
 use Closure;
 use DateTimeImmutable;
@@ -58,255 +58,352 @@ use DateTimeZone;
  *
  * The rules are deliberately strict: a purchase that does not count is
  * never shown, one that does not clearly count is not shown either.
+ *
+ * @package   Kirby Kehai
+ * @author    Simon Räder
+ * @link      https://github.com/sayamaapps/kirby-kehai
+ * @copyright Simon Räder
+ * @license   https://opensource.org/licenses/MIT
  */
-final class Digistore24 implements Source
+class Digistore24 implements Source
 {
-    public const ENDPOINT = 'https://www.digistore24.com/api/call/listPurchases/json';
-    public const PAGE_SIZE = 500;
-    public const MAX_PAGES = 20;
+	public const ENDPOINT = 'https://www.digistore24.com/api/call/listPurchases/json';
+	public const MAX_PAGES = 20;
+	public const PAGE_SIZE = 500;
 
-    /** billing_status values of an order that is paid or being paid. */
-    public const PAID = ['completed', 'paying'];
+	/** billing_status values of an order that is paid or being paid. */
+	public const PAID = ['completed', 'paying'];
 
-    /**
-     * @param Closure              $transport fn (string $url, array $headers): array{status:int, body:string}
-     * @param array<string,string> $products  Digistore24 product id => product key (the allow list)
-     */
-    public function __construct(
-        private readonly Closure $transport,
-        private readonly string $key,
-        private readonly array $products,
-        private readonly bool $country = false,
-        private readonly string $timezone = 'Europe/Berlin',
-    ) {
-    }
+	/**
+	 * @param $transport fn (string $url, array $headers): array{status:int, body:string}
+	 * @param array<string,string> $products Digistore24 product id => product key (the allow list)
+	 */
+	public function __construct(
+		private readonly Closure $transport,
+		private readonly string $key,
+		private readonly array $products,
+		private readonly bool $country = false,
+		private readonly string $timezone = 'Europe/Berlin',
+	) {
+	}
 
-    public function id(): string
-    {
-        return 'digistore24';
-    }
+	/**
+	 * Where a cut answer is complete from. The request asks for newest
+	 * first, so the answer is the newest MAX_PAGES × PAGE_SIZE orders —
+	 * if the source honoured that. Every readable `created_at` must
+	 * therefore be in non-increasing order; otherwise nothing is known to
+	 * be complete ($now, the file covers nothing). An order created before
+	 * the window among them means every order of the window came along
+	 * ($from). Else the boundary is the minute after the oldest order
+	 * received. No readable time at all: $now.
+	 */
+	private static function boundary(array $purchases, DateTimeImmutable $from, DateTimeImmutable $now, DateTimeZone $zone): DateTimeImmutable
+	{
+		$oldest = null;
+		foreach ($purchases as $purchase) {
+			$time = is_array($purchase) ? self::time($purchase['created_at'] ?? null, $zone) : null;
+			if ($time === null) {
+				continue;
+			}
+			if ($oldest !== null && $time > $oldest) {
+				return $now;
+			}
+			$oldest = $time;
+		}
+		if ($oldest === null) {
+			return $now;
+		}
+		if ($oldest < $from) {
+			return $from;
+		}
+		$minute = $oldest->setTimezone(new DateTimeZone('UTC'));
+		return $minute->setTime((int)$minute->format('H'), (int)$minute->format('i'))->modify('+60 seconds');
+	}
 
-    public function events(DateTimeImmutable $from, DateTimeImmutable $now): array
-    {
-        $zone = new DateTimeZone($this->timezone);
-        $purchases = [];
-        $cut = false;
-        for ($page = 1; $page <= self::MAX_PAGES; $page++) {
-            $list = $this->page($from->setTimezone($zone)->format('Y-m-d'), $now->setTimezone($zone)->modify('+1 day')->format('Y-m-d'), $page);
-            array_push($purchases, ...$list);
-            if (count($list) < self::PAGE_SIZE) {
-                break;
-            }
-            $cut = $page === self::MAX_PAGES; // the last page we read was still full: the answer goes on
-        }
-        $result = $this->convert($purchases, $from, $now) + ['from' => $from];
-        if ($cut) {
-            $result['from'] = self::boundary($purchases, $from, $now, $zone);
-            // The first note is the count line; the cut belongs right after it.
-            array_splice($result['notes'], 1, 0, 'the source cut its answer after ' . self::MAX_PAGES * self::PAGE_SIZE . ' orders (MAX_PAGES × PAGE_SIZE): the file covers the last '
-                . max(0, intdiv($now->getTimestamp() - $result['from']->getTimestamp(), 86400)) . ' days only');
-        }
-        return $result;
-    }
+	/** Cancelled orders. */
+	private static function cancelReason(array $purchase): string|null
+	{
+		return self::yes($purchase['is_canceled_now'] ?? $purchase['is_cancelled_now'] ?? null) ? 'cancelled (is_canceled_now)' : null;
+	}
 
-    /**
-     * Where a cut answer is complete from. The request asks for newest
-     * first, so the answer is the newest MAX_PAGES × PAGE_SIZE orders —
-     * if the source honoured that. Every readable `created_at` must
-     * therefore be in non-increasing order; otherwise nothing is known to
-     * be complete ($now, the file covers nothing). An order created before
-     * the window among them means every order of the window came along
-     * ($from). Else the boundary is the minute after the oldest order
-     * received. No readable time at all: $now.
-     */
-    private static function boundary(array $purchases, DateTimeImmutable $from, DateTimeImmutable $now, DateTimeZone $zone): DateTimeImmutable
-    {
-        $oldest = null;
-        foreach ($purchases as $purchase) {
-            $time = is_array($purchase) ? self::time($purchase['created_at'] ?? null, $zone) : null;
-            if ($time === null) {
-                continue;
-            }
-            if ($oldest !== null && $time > $oldest) {
-                return $now;
-            }
-            $oldest = $time;
-        }
-        if ($oldest === null) {
-            return $now;
-        }
-        if ($oldest < $from) {
-            return $from;
-        }
-        $minute = $oldest->setTimezone(new DateTimeZone('UTC'));
-        return $minute->setTime((int) $minute->format('H'), (int) $minute->format('i'))->modify('+60 seconds');
-    }
+	/**
+	 * The purchases of an answer, as events and notes. Public for the
+	 * tests; events() calls it with every page.
+	 *
+	 * @return array{events: list<array>, notes: list<string>}
+	 */
+	public function convert(array $purchases, DateTimeImmutable $from, DateTimeImmutable $now): array
+	{
+		/** @var non-empty-string $timezone validated by Config */
+		$timezone = $this->timezone;
+		$zone = new DateTimeZone($timezone);
+		$latest = $now->getTimestamp() + Events::FUTURE_TOLERANCE;
+		$events = [];
+		$skipped = [];
+		$unknown = [];
+		$seen = [];
+		foreach ($purchases as $purchase) {
+			$reason = $this->reason($purchase);
+			$reason ??= $this->productReason($purchase, $unknown);
+			$at = $reason === null ? self::time($purchase['created_at'] ?? null, $zone) : null;
+			$reason ??= self::timeReason($at, $from, $latest);
+			$reason ??= self::duplicateReason($purchase, $seen);
+			if ($reason !== null) {
+				$skipped[$reason] = ($skipped[$reason] ?? 0) + 1;
+				continue;
+			}
+			$events[] = $this->event($purchase, $at ?? $now);
+		}
+		return ['events' => $events, 'notes' => self::notes(count($purchases), count($events), $skipped, $unknown)];
+	}
 
-    /**
-     * The purchases of an answer, as events and notes. Public for the
-     * tests; events() calls it with every page.
-     *
-     * @return array{events: list<array>, notes: list<string>}
-     */
-    public function convert(array $purchases, DateTimeImmutable $from, DateTimeImmutable $now): array
-    {
-        $zone = new DateTimeZone($this->timezone);
-        $latest = $now->getTimestamp() + Events::FUTURE_TOLERANCE;
-        $events = [];
-        $skipped = [];
-        $unknown = [];
-        $seen = [];
-        foreach ($purchases as $purchase) {
-            $reason = $this->reason($purchase);
-            if ($reason === null) {
-                $id = (string) ($purchase['main_product_id'] ?? '');
-                if (!isset($this->products[$id])) {
-                    $shown = preg_match(Config::ID_PATTERN, $id) ? $id : '(no valid id)';
-                    $unknown[$shown] = ($unknown[$shown] ?? 0) + 1;
-                    $reason = 'product not in kehai.products';
-                }
-            }
-            $at = $reason === null ? self::time($purchase['created_at'] ?? null, $zone) : null;
-            if ($reason === null && $at === null) {
-                $reason = 'no valid created_at';
-            }
-            if ($reason === null && ($at < $from || $at->getTimestamp() > $latest)) {
-                $reason = 'created before the window (a later payment of an older order)';
-            }
-            $order = $purchase['id'] ?? $purchase['purchase_id'] ?? null;
-            if ($reason === null && is_scalar($order) && (string) $order !== '') {
-                if (isset($seen[(string) $order])) {
-                    $reason = 'listed twice';
-                }
-                $seen[(string) $order] = true;
-            }
-            if ($reason !== null) {
-                $skipped[$reason] = ($skipped[$reason] ?? 0) + 1;
-                continue;
-            }
-            $event = ['type' => 'purchase', 'product' => $this->products[(string) $purchase['main_product_id']], 'at' => Events::minute($at)];
-            $code = $purchase['vat_country'] ?? null;
-            if ($this->country && is_string($code) && preg_match('/^[A-Za-z]{2}\z/', $code)) {
-                $event['country'] = strtoupper($code);
-            }
-            $events[] = $event;
-        }
+	/** An order that is listed a second time does not count again; the first listing is kept. */
+	private static function duplicateReason(array $purchase, array &$seen): string|null
+	{
+		$order = $purchase['id'] ?? $purchase['purchase_id'] ?? null;
+		if (!is_scalar($order) || (string)$order === '') {
+			return null;
+		}
+		if (isset($seen[(string)$order])) {
+			return 'listed twice';
+		}
+		$seen[(string)$order] = true;
+		return null;
+	}
 
-        $notes = [count($purchases) . ' purchases received, ' . count($events) . ' counted'];
-        ksort($skipped);
-        foreach ($skipped as $reason => $count) {
-            $notes[] = "  not counted: $count × $reason";
-        }
-        ksort($unknown);
-        foreach ($unknown as $id => $count) {
-            $notes[] = "  product $id is not in kehai.products ($count purchases)";
-        }
-        return ['events' => $events, 'notes' => $notes];
-    }
+	/** The event of a counted purchase: product, minute, and the country if the account asks for it. */
+	private function event(array $purchase, DateTimeImmutable $at): array
+	{
+		$event = ['type' => 'purchase', 'product' => $this->products[(string)$purchase['main_product_id']], 'at' => Events::minute($at)];
+		$code = $purchase['vat_country'] ?? null;
+		if ($this->country && is_string($code) && preg_match('/^[A-Za-z]{2}\z/', $code)) {
+			$event['country'] = strtoupper($code);
+		}
+		return $event;
+	}
 
-    /** Why a purchase does not count, or null. Reads only status fields. */
-    private function reason(mixed $purchase): ?string
-    {
-        if (!is_array($purchase)) {
-            return 'not a purchase entry';
-        }
-        $yes = fn (mixed $value) => in_array(is_string($value) ? strtoupper(trim($value)) : $value, ['Y', 'YES', '1', 'TRUE', true, 1], true);
-        if (strtolower((string) ($purchase['order_type'] ?? '')) === 'test' || $yes($purchase['is_test_order'] ?? null) || $yes($purchase['is_test_payment'] ?? null)) {
-            return 'test order';
-        }
-        $type = $purchase['transaction_type'] ?? null;
-        if ($type !== null && strtolower((string) $type) !== 'payment') {
-            $type = strtolower((string) $type);
-            return 'transaction_type ' . (preg_match('/^[a-z_]{1,30}\z/', $type) ? $type : '(other)');
-        }
-        if ($yes($purchase['is_canceled_now'] ?? $purchase['is_cancelled_now'] ?? null)) {
-            return 'cancelled (is_canceled_now)';
-        }
-        $status = strtolower((string) ($purchase['billing_status'] ?? ''));
-        if (!in_array($status, self::PAID, true)) {
-            return 'billing_status ' . ($status === '' ? '(missing)' : (preg_match('/^[a-z_]{1,30}\z/', $status) ? $status : '(other)'));
-        }
-        return null;
-    }
+	#[\Override]
+	public function events(DateTimeImmutable $from, DateTimeImmutable $now): array
+	{
+		/** @var non-empty-string $timezone validated by Config */
+		$timezone = $this->timezone;
+		$zone = new DateTimeZone($timezone);
+		$purchases = [];
+		$cut = false;
+		for ($page = 1; $page <= self::MAX_PAGES; $page++) {
+			$list = $this->page($from->setTimezone($zone)->format('Y-m-d'), $now->setTimezone($zone)->modify('+1 day')->format('Y-m-d'), $page);
+			array_push($purchases, ...$list);
+			if (count($list) < self::PAGE_SIZE) {
+				break;
+			}
+			$cut = $page === self::MAX_PAGES; // the last page we read was still full: the answer goes on
+		}
+		$result = $this->convert($purchases, $from, $now) + ['from' => $from];
+		if ($cut) {
+			$result['from'] = self::boundary($purchases, $from, $now, $zone);
+			// The first note is the count line; the cut belongs right after it.
+			array_splice($result['notes'], 1, 0, 'the source cut its answer after ' . self::MAX_PAGES * self::PAGE_SIZE . ' orders (MAX_PAGES × PAGE_SIZE): '
+				. 'the file covers the last ' . max(0, intdiv($now->getTimestamp() - $result['from']->getTimestamp(), 86400)) . ' days only');
+		}
+		return $result;
+	}
 
-    /** `created_at` as a time: "2026-10-12 14:03:11" in the account's time zone, or ISO 8601 with offset. */
-    public static function time(mixed $value, DateTimeZone $zone): ?DateTimeImmutable
-    {
-        if (!is_string($value)) {
-            return null;
-        }
-        $value = trim($value);
-        if (preg_match('/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?\z/', $value)) {
-            $time = DateTimeImmutable::createFromFormat('!Y-m-d H:i' . (strlen($value) > 16 ? ':s' : ''), str_replace('T', ' ', $value), $zone);
-        } elseif (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})\z/', $value)) {
-            try {
-                $time = new DateTimeImmutable($value);
-            } catch (\Throwable) {
-                $time = false;
-            }
-        } else {
-            return null;
-        }
-        // createFromFormat() rolls 2026-02-31 over to March; that is not a date.
-        $errors = DateTimeImmutable::getLastErrors();
-        return $time === false || ($errors !== false && $errors['warning_count'] > 0) ? null : $time;
-    }
+	/** The error for an answer that is not HTTP 200; Digistore24's message is quoted when it has one. */
+	private function httpError(int $status, mixed $decoded): SourceException
+	{
+		$message = is_array($decoded) ? ($decoded['message'] ?? null) : null;
+		return new SourceException('Digistore24 answered HTTP ' . $status . (is_string($message) && $message !== '' ? ': ' . $this->safe($message) : ''));
+	}
 
-    /**
-     * One page of purchases.
-     *
-     * @return list<mixed>
-     * @throws SourceException
-     */
-    private function page(string $from, string $to, int $page): array
-    {
-        $url = self::ENDPOINT . '?' . http_build_query([
-            'from'       => $from,
-            'to'         => $to,
-            'search'     => ['order_type' => 'live'] + ($this->products === [] ? [] : ['product_id' => implode(',', array_keys($this->products))]),
-            'sort_by'    => 'date',
-            'sort_order' => 'desc',
-            'page_no'    => $page,
-            'page_size'  => self::PAGE_SIZE,
-        ]);
-        try {
-            $answer = ($this->transport)($url, ['X-DS-API-KEY: ' . $this->key, 'Accept: application/json']);
-        } catch (\Throwable $e) {
-            throw new SourceException('Digistore24 not reachable: ' . $this->safe($e->getMessage()));
-        }
-        $status = (int) ($answer['status'] ?? 0);
-        $decoded = json_decode((string) ($answer['body'] ?? ''), true);
-        if ($status !== 200) {
-            $message = is_array($decoded) ? ($decoded['message'] ?? null) : null;
-            throw new SourceException('Digistore24 answered HTTP ' . $status . (is_string($message) && $message !== '' ? ': ' . $this->safe($message) : ''));
-        }
-        if (!is_array($decoded)) {
-            throw new SourceException('Digistore24 answered with a body that is not JSON');
-        }
-        if (($decoded['result'] ?? null) !== 'success') {
-            $message = $decoded['message'] ?? null;
-            throw new SourceException('Digistore24 answered result "' . $this->safe(is_scalar($decoded['result'] ?? null) ? (string) $decoded['result'] : '?', 20) . '"'
-                . (is_string($message) && $message !== '' ? ': ' . $this->safe($message) : ''));
-        }
-        $data = $decoded['data'] ?? null;
-        if (is_array($data) && array_is_list($data)) {
-            return $data;
-        }
-        if (is_array($data) && is_array($data['purchase_list'] ?? null)) {
-            return array_values($data['purchase_list']);
-        }
-        throw new SourceException('Digistore24 answered without a purchase list');
-    }
+	#[\Override]
+	public function id(): string
+	{
+		return 'digistore24';
+	}
 
-    /**
-     * A message from Digistore24 or the network, safe to print: without the
-     * key, without anything that looks like an e-mail address, plain text,
-     * at most $max characters.
-     */
-    private function safe(string $message, int $max = 200): string
-    {
-        $message = $this->key === '' ? $message : str_replace($this->key, '[key]', $message);
-        $message = (string) preg_replace('/[^\s@<>"\']+@[^\s@<>"\']+/u', '[e-mail]', $message);
-        return Text::plain($message, $max);
-    }
+	/**
+	 * The count line and one line per reason and unknown product.
+	 *
+	 * @param array<string, int> $skipped
+	 * @param array<string, int> $unknown
+	 * @return list<string>
+	 */
+	private static function notes(int $received, int $counted, array $skipped, array $unknown): array
+	{
+		$notes = [$received . ' purchases received, ' . $counted . ' counted'];
+		ksort($skipped);
+		foreach ($skipped as $reason => $count) {
+			$notes[] = "  not counted: $count × $reason";
+		}
+		ksort($unknown);
+		foreach ($unknown as $id => $count) {
+			$notes[] = "  product $id is not in kehai.products ($count purchases)";
+		}
+		return $notes;
+	}
+
+	/**
+	 * One page of purchases.
+	 *
+	 * @return list<mixed>
+	 * @throws SourceException
+	 */
+	private function page(string $from, string $to, int $page): array
+	{
+		$url = self::ENDPOINT . '?' . http_build_query([
+			'from'       => $from,
+			'to'         => $to,
+			'search'     => ['order_type' => 'live'] + ($this->products === [] ? [] : ['product_id' => implode(',', array_keys($this->products))]),
+			'sort_by'    => 'date',
+			'sort_order' => 'desc',
+			'page_no'    => $page,
+			'page_size'  => self::PAGE_SIZE,
+		]);
+		try {
+			$answer = ($this->transport)($url, ['X-DS-API-KEY: ' . $this->key, 'Accept: application/json']);
+		} catch (\Throwable $e) {
+			throw new SourceException('Digistore24 not reachable: ' . $this->safe($e->getMessage()));
+		}
+		$status = (int)($answer['status'] ?? 0);
+		$decoded = json_decode((string)($answer['body'] ?? ''), true);
+		if ($status !== 200) {
+			throw $this->httpError($status, $decoded);
+		}
+		if (!is_array($decoded)) {
+			throw new SourceException('Digistore24 answered with a body that is not JSON');
+		}
+		if (($decoded['result'] ?? null) !== 'success') {
+			throw $this->resultError($decoded);
+		}
+		return self::purchaseList($decoded['data'] ?? null);
+	}
+
+	/** A billing status that is not one of the paid ones. */
+	private function paidReason(array $purchase): string|null
+	{
+		$status = strtolower((string)($purchase['billing_status'] ?? ''));
+		if (!in_array($status, self::PAID, true)) {
+			return 'billing_status ' . ($status === '' ? '(missing)' : (preg_match('/^[a-z_]{1,30}\z/', $status) ? $status : '(other)'));
+		}
+		return null;
+	}
+
+	/** The product of a purchase that is counted, or the reason it is not (and the unknown id is counted). */
+	private function productReason(array $purchase, array &$unknown): string|null
+	{
+		$id = (string)($purchase['main_product_id'] ?? '');
+		if (isset($this->products[$id])) {
+			return null;
+		}
+		$shown = preg_match(Config::ID_PATTERN, $id) ? $id : '(no valid id)';
+		$unknown[$shown] = ($unknown[$shown] ?? 0) + 1;
+		return 'product not in kehai.products';
+	}
+
+	/**
+	 * The list of purchases of `data`: a plain list, or `purchase_list` inside it.
+	 *
+	 * @return list<mixed>
+	 * @throws SourceException
+	 */
+	private static function purchaseList(mixed $data): array
+	{
+		if (is_array($data) && array_is_list($data)) {
+			return $data;
+		}
+		if (is_array($data) && is_array($data['purchase_list'] ?? null)) {
+			return array_values($data['purchase_list']);
+		}
+		throw new SourceException('Digistore24 answered without a purchase list');
+	}
+
+	/** Why a purchase does not count, or null. Reads only status fields. */
+	private function reason(mixed $purchase): string|null
+	{
+		if (!is_array($purchase)) {
+			return 'not a purchase entry';
+		}
+		return self::testReason($purchase) ?? self::typeReason($purchase) ?? self::cancelReason($purchase) ?? $this->paidReason($purchase);
+	}
+
+	/** The error for a JSON answer whose `result` is not "success". */
+	private function resultError(array $decoded): SourceException
+	{
+		$message = $decoded['message'] ?? null;
+		return new SourceException('Digistore24 answered result "' . $this->safe(is_scalar($decoded['result'] ?? null) ? (string)$decoded['result'] : '?', 20) . '"'
+			. (is_string($message) && $message !== '' ? ': ' . $this->safe($message) : ''));
+	}
+
+	/**
+	 * A message from Digistore24 or the network, safe to print: without the
+	 * key, without anything that looks like an e-mail address, plain text,
+	 * at most $max characters.
+	 */
+	private function safe(string $message, int $max = 200): string
+	{
+		$message = $this->key === '' ? $message : str_replace($this->key, '[key]', $message);
+		$message = (string)preg_replace('/[^\s@<>"\']+@[^\s@<>"\']+/u', '[e-mail]', $message);
+		return Text::plain($message, $max);
+	}
+
+	/** Test orders and test payments. */
+	private static function testReason(array $purchase): string|null
+	{
+		if (strtolower((string)($purchase['order_type'] ?? '')) === 'test' || self::yes($purchase['is_test_order'] ?? null) || self::yes($purchase['is_test_payment'] ?? null)) {
+			return 'test order';
+		}
+		return null;
+	}
+
+	/** `created_at` as a time: "2026-10-12 14:03:11" in the account's time zone, or ISO 8601 with offset. */
+	public static function time(mixed $value, DateTimeZone $zone): DateTimeImmutable|null
+	{
+		if (!is_string($value)) {
+			return null;
+		}
+		$value = trim($value);
+		if (preg_match('/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?\z/', $value)) {
+			$time = DateTimeImmutable::createFromFormat('!Y-m-d H:i' . (strlen($value) > 16 ? ':s' : ''), str_replace('T', ' ', $value), $zone);
+		} elseif (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})\z/', $value)) {
+			try {
+				$time = new DateTimeImmutable($value);
+			} catch (\Throwable) {
+				$time = false;
+			}
+		} else {
+			return null;
+		}
+		// createFromFormat() rolls 2026-02-31 over to March; that is not a date.
+		$errors = DateTimeImmutable::getLastErrors();
+		return $time === false || ($errors !== false && $errors['warning_count'] > 0) ? null : $time;
+	}
+
+	/** Why the time of a purchase does not count, or null. */
+	private static function timeReason(DateTimeImmutable|null $at, DateTimeImmutable $from, int $latest): string|null
+	{
+		if ($at === null) {
+			return 'no valid created_at';
+		}
+		if ($at < $from || $at->getTimestamp() > $latest) {
+			return 'created before the window (a later payment of an older order)';
+		}
+		return null;
+	}
+
+	/** Anything but a payment, such as a refund. */
+	private static function typeReason(array $purchase): string|null
+	{
+		$type = $purchase['transaction_type'] ?? null;
+		if ($type !== null && strtolower((string)$type) !== 'payment') {
+			$type = strtolower((string)$type);
+			return 'transaction_type ' . (preg_match('/^[a-z_]{1,30}\z/', $type) ? $type : '(other)');
+		}
+		return null;
+	}
+
+	/** Whether a flag in the answer says yes: Y, YES, 1, TRUE (any case) or the value true. */
+	private static function yes(mixed $value): bool
+	{
+		return in_array(is_string($value) ? strtoupper(trim($value)) : $value, ['Y', 'YES', '1', 'TRUE', true, 1], true);
+	}
 }

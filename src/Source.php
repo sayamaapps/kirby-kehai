@@ -1,6 +1,6 @@
 <?php
 
-namespace Kehai;
+namespace Sayamaapps\Kehai;
 
 use DateTimeImmutable;
 
@@ -16,21 +16,27 @@ use DateTimeImmutable;
  * the site's allow list), `at` (Events::minute()) and, when asked for,
  * `country` — and its notes must not quote personal data. Events::build()
  * cleans the events once more before anything is written.
+ *
+ * @package   Kirby Kehai
+ * @author    Simon Räder
+ * @link      https://github.com/sayamaapps/kirby-kehai
+ * @copyright Simon Räder
+ * @license   https://opensource.org/licenses/MIT
  */
 interface Source
 {
-    /** Short name stored in the data file, e.g. `digistore24`. */
-    public function id(): string;
+	/**
+	 * Events between $from and $now, oldest first or in any order.
+	 *
+	 * `from` is the start of the period the events cover completely: the
+	 * $from asked for, or later when the source cut its answer (a page
+	 * limit). Events::build() writes it to the data file.
+	 *
+	 * @return array{events: list<array{type:string, product:string, at:string, country?:string}>, notes: list<string>, from: DateTimeImmutable}
+	 * @throws SourceException with a message that is safe to print
+	 */
+	public function events(DateTimeImmutable $from, DateTimeImmutable $now): array;
 
-    /**
-     * Events between $from and $now, oldest first or in any order.
-     *
-     * `from` is the start of the period the events cover completely: the
-     * $from asked for, or later when the source cut its answer (a page
-     * limit). Events::build() writes it to the data file.
-     *
-     * @return array{events: list<array{type:string, product:string, at:string, country?:string}>, notes: list<string>, from: DateTimeImmutable}
-     * @throws SourceException with a message that is safe to print
-     */
-    public function events(DateTimeImmutable $from, DateTimeImmutable $now): array;
+	/** Short name stored in the data file, e.g. `digistore24`. */
+	public function id(): string;
 }

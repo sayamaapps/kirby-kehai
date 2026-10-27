@@ -9,14 +9,22 @@ permissions:
 
 jobs:
   tests:
-    name: PHP ${{ matrix.php }}
+    name: PHP ${{ matrix.php }}, ${{ matrix.deps }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        php: ['8.2', '8.3', '8.4']
+        php: ['8.2', '8.3', '8.4', '8.5']
+        # lowest: the oldest Kirby 5 and the oldest dependencies allowed by composer.json.
+        # locked: the versions in composer.lock. highest: the newest versions, the lock is ignored.
+        deps: [lowest, locked, highest]
     steps:
       - uses: actions/checkout@v4
+
+      # Ubuntu's PHP reads the system zoneinfo; since 24.04 the backward-compatible
+      # names (Europe/Kiev, US/Eastern) live in tzdata-legacy. Hosters keep them.
+      - name: Legacy time zone names
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends tzdata-legacy
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -24,11 +32,20 @@ jobs:
           extensions: mbstring, curl
           coverage: none
 
-      - name: Install dev dependencies (Kirby as fixture)
+      - name: Install dependencies, lowest versions
+        if: matrix.deps == 'lowest'
+        run: composer update --no-interaction --no-progress --prefer-dist --prefer-lowest --prefer-stable --ignore-platform-req=ext-gd
+
+      - name: Install dependencies, locked versions
+        if: matrix.deps == 'locked'
         run: composer install --no-interaction --no-progress --prefer-dist --ignore-platform-req=ext-gd
 
-      - name: Tests
-        run: sh tests/run.sh
+      - name: Install dependencies, highest versions
+        if: matrix.deps == 'highest'
+        run: composer update --no-interaction --no-progress --prefer-dist --ignore-platform-req=ext-gd
+
+      - name: Tests (Kirby as fixture)
+        run: vendor/bin/phpunit
 
       - name: The CLI outside a site says so (exit 2) and never needs a key for that
         run: |
@@ -37,6 +54,81 @@ jobs:
           status=$?
           set -e
           [ "$status" = "2" ] || { echo "::error::expected exit 2 without a site, got $status"; exit 1; }
+
+  analysis:
+    name: Analysis, PHP 8.4
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, curl
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist --ignore-platform-req=ext-gd
+
+      - name: Composer validate
+        run: composer validate --strict --no-check-version --no-check-all
+
+      - name: Composer normalize
+        run: composer normalize:check
+
+      - name: Undeclared dependencies
+        run: composer analyze:require-checker
+
+      - name: Unused dependencies
+        run: composer analyze:unused
+
+      # phpcpd 6 needs sebastian/cli-parser 1, which PHPUnit 11 does not allow, so it is
+      # installed globally like php-cs below and is not a dev dependency.
+      - name: Install phpcpd
+        run: |
+          composer global require --no-interaction sebastian/phpcpd:^6.0
+          echo "$(composer global config home)/vendor/bin" >> "$GITHUB_PATH"
+
+      - name: Copy-paste detection
+        run: phpcpd src index.php legacy.php autoload.php
+
+      - name: Platform requirements
+        run: composer check-platform-reqs
+
+      - name: Psalm
+        run: composer analyze:psalm
+
+      # PHPMD 2.15 writes deprecation notices to stdout on PHP 8.5, so this job stays on 8.4.
+      - name: PHP Mess Detector
+        run: composer analyze:phpmd
+
+  style:
+    name: Code style, PHP 8.4
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # getkirby/php-cs needs PHP 8.3 or newer, so it is installed globally and
+      # not as a dependency: the package itself supports PHP 8.2.
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Install php-cs
+        run: |
+          composer global require --no-interaction getkirby/php-cs:0.2.1
+          echo "$(composer global config home)/vendor/bin" >> "$GITHUB_PATH"
+
+      - name: Check code style
+        run: kirby-cs fix --dry-run --diff
+
+      # The fixer looks at *.php only. bin/kehai has no extension and uses tabs like the rest.
+      - name: Tabs in the CLI script
+        run: |
+          if grep -nP '^ +(?!\*)' bin/kehai; then
+            echo "::error::bin/kehai must be indented with tabs"; exit 1
+          fi
 
   script:
     name: kehai.js
@@ -94,4 +186,4 @@ jobs:
           composer require --dev 'getkirby/cms:^6.0@beta' --with-all-dependencies --no-interaction --no-progress --prefer-dist --ignore-platform-req=ext-gd
 
       - name: Tests
-        run: sh tests/run.sh || echo "::warning title=Kirby 6::Tests fail against the Kirby 6 pre-release, see the log"
+        run: vendor/bin/phpunit || echo "::warning title=Kirby 6::Tests fail against the Kirby 6 pre-release, see the log"

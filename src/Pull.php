@@ -1,9 +1,10 @@
 <?php
 
-namespace Kehai;
+namespace Sayamaapps\Kehai;
 
 use Closure;
 use DateTimeImmutable;
+use RuntimeException;
 
 /**
  * Pull mode (`kehai.pull`, off by default): the site fetches by itself,
@@ -25,146 +26,176 @@ use DateTimeImmutable;
  *    background); a page render only where such a function exists, since
  *    elsewhere the visitor would wait. In pull mode the bubble snippet prints
  *    its markup even with nothing to show, so that the route gets called.
+ *
+ * @package   Kirby Kehai
+ * @author    Simon Räder
+ * @link      https://github.com/sayamaapps/kirby-kehai
+ * @copyright Simon Räder
+ * @license   https://opensource.org/licenses/MIT
  */
-final class Pull
+class Pull
 {
-    public const TIMEOUT = 5;
+	public const TIMEOUT = 5;
 
-    /**
-     * Makes the transport for a timeout: Http::transport() unless a test
-     * replaces the network. fn (int $timeout): Closure
-     * Called once per request, with the whole seconds that are left.
-     */
-    public static ?Closure $transports = null;
+	/**
+	 * Seconds on a monotonic clock, fn (): float. Kept from 1.x, as a test
+	 * seam; the $clock parameter of run() does the same.
+	 *
+	 * @deprecated use the $clock parameter of run()
+	 * @internal
+	 */
+	public static Closure|null $clock = null;
 
-    /** Seconds on a monotonic clock, for tests: fn (): float. Default hrtime(true) / 1e9. */
-    public static ?Closure $clock = null;
+	/**
+	 * Makes the transport for a timeout: Http::transport() unless a test
+	 * replaces the network. fn (int $timeout): Closure. Kept from 1.x, as a
+	 * test seam; the $transport parameter of run() does the same.
+	 *
+	 * @deprecated use the $transport parameter of run()
+	 * @internal
+	 */
+	public static Closure|null $transports = null;
 
-    /** @var array{0: array, 1: string}|null */
-    private static ?array $pending = null;
+	/** @var array{0: array, 1: string}|null */
+	private static array|null $pending = null;
+	private static bool $registered = false;
 
-    private static bool $registered = false;
+	/** Whether a page render can hand the answer over before the pull runs. */
+	public static function canFinishEarly(): bool
+	{
+		return function_exists('fastcgi_finish_request') || function_exists('litespeed_finish_request');
+	}
 
-    public static function marker(string $file): string
-    {
-        return dirname($file) . '/.kehai-pull';
-    }
+	/** Whether the last attempt is longer ago than `pullInterval`. */
+	public static function due(array $config, int $now): bool
+	{
+		$marker = self::marker($config['file']);
+		clearstatcache(true, $marker);
+		return !is_file($marker) || (int)filemtime($marker) <= $now - $config['pullInterval'] * 60;
+	}
 
-    public static function lockFile(string $file): string
-    {
-        return dirname($file) . '/.kehai-pull.lock';
-    }
+	/**
+	 * Runs the remembered pull after handing the answer to the visitor.
+	 *
+	 * @param $transport see run(); null uses the network
+	 * @param $clock see run(); null uses the monotonic clock
+	 */
+	public static function flush(Closure|null $transport = null, Closure|null $clock = null): string|null
+	{
+		if (self::$pending === null) {
+			return null;
+		}
+		[$config, $key] = self::$pending;
+		self::$pending = null;
+		if (function_exists('fastcgi_finish_request')) {
+			fastcgi_finish_request();
+		} elseif (function_exists('litespeed_finish_request')) {
+			litespeed_finish_request();
+		}
+		return self::run($config, $key, null, $transport, $clock);
+	}
 
-    /** Whether the last attempt is longer ago than `pullInterval`. */
-    public static function due(array $config, int $now): bool
-    {
-        $marker = self::marker($config['file']);
-        clearstatcache(true, $marker);
-        return !is_file($marker) || (int) filemtime($marker) <= $now - $config['pullInterval'] * 60;
-    }
+	/** Remembers a pull for the end of the request (once per request). */
+	public static function later(array $config, string $key): void
+	{
+		self::$pending ??= [$config, $key];
+		if (!self::$registered) {
+			self::$registered = true;
+			register_shutdown_function([self::class, 'flush']);
+		}
+	}
 
-    /** Whether a page render can hand the answer over before the pull runs. */
-    public static function canFinishEarly(): bool
-    {
-        return function_exists('fastcgi_finish_request') || function_exists('litespeed_finish_request');
-    }
+	public static function lockFile(string $file): string
+	{
+		return dirname($file) . '/.kehai-pull.lock';
+	}
 
-    /**
-     * One pull, now, if it is due and no other process is at it.
-     *
-     * @return string `not due`, `locked`, `written` or `failed`
-     */
-    public static function run(array $config, string $key, ?DateTimeImmutable $now = null): string
-    {
-        $now ??= new DateTimeImmutable('now');
-        if (!self::due($config, $now->getTimestamp())) {
-            return 'not due';
-        }
-        $dir = dirname($config['file']);
-        if (!is_dir($dir) && !@mkdir($dir, 0775, true) && !is_dir($dir)) {
-            Log::error('Kehai: pull mode cannot create ' . $dir);
-            return 'failed';
-        }
-        $lock = @fopen(self::lockFile($config['file']), 'c');
-        if ($lock === false) {
-            Log::error('Kehai: pull mode cannot open its lock file in ' . $dir);
-            return 'failed';
-        }
-        if (!flock($lock, LOCK_EX | LOCK_NB)) {
-            fclose($lock);
-            return 'locked';
-        }
-        try {
-            // Another process may have finished a pull while this one waited for the lock.
-            if (!self::due($config, $now->getTimestamp())) {
-                return 'not due';
-            }
-            touch(self::marker($config['file']), $now->getTimestamp());
-            $transport = self::withDeadline(self::now());
-            $source = Fetch::source($config, $key, $transport);
-            Events::write($config['file'], Fetch::collect($source, $config, $now)['data']);
-            return 'written';
-        } catch (\Throwable $e) {
-            Log::error('Kehai: pull failed, the last data file stays: ' . str_replace($key, '[key]', $e->getMessage()));
-            return 'failed';
-        } finally {
-            flock($lock, LOCK_UN);
-            fclose($lock);
-        }
-    }
+	public static function marker(string $file): string
+	{
+		return dirname($file) . '/.kehai-pull';
+	}
 
-    private static function now(): float
-    {
-        return self::$clock !== null ? (self::$clock)() : hrtime(true) / 1e9;
-    }
+	/**
+	 * Whether a pull is remembered for the end of the request.
+	 *
+	 * @deprecated kept from 1.x for tests; not part of the public API
+	 * @internal
+	 */
+	public static function pending(): bool
+	{
+		return self::$pending !== null;
+	}
 
-    /**
-     * A transport for the whole pull: every request gets only the whole
-     * seconds that are left of TIMEOUT; once they are used up it throws
-     * without a request. The overshoot is under one second with curl (the
-     * stream fallback's timeout is per read).
-     */
-    private static function withDeadline(float $start): Closure
-    {
-        return function (string $url, array $headers) use ($start): array {
-            $left = self::TIMEOUT - (self::now() - $start);
-            if ($left <= 0) {
-                throw new \RuntimeException('the pull reached its time limit of ' . self::TIMEOUT . ' seconds');
-            }
-            $timeout = (int) ceil($left);
-            $transport = self::$transports !== null ? (self::$transports)($timeout) : Http::transport($timeout);
-            return $transport($url, $headers);
-        };
-    }
+	/**
+	 * One pull, now, if it is due and no other process is at it.
+	 *
+	 * @param $transport Makes the transport for a timeout, fn (int $timeout): Closure.
+	 *                  Called once per request, with the whole seconds that are left. Null uses the network.
+	 * @param $clock Seconds on a monotonic clock, fn (): float. Null uses hrtime().
+	 * @return string `not due`, `locked`, `written` or `failed`
+	 */
+	public static function run(
+		array $config,
+		string $key,
+		DateTimeImmutable|null $now = null,
+		Closure|null $transport = null,
+		Closure|null $clock = null,
+	): string {
+		$now ??= new DateTimeImmutable('now');
+		$transport ??= self::$transports;
+		$clock ??= self::$clock ?? static fn (): float => (float)hrtime(true) / 1e9;
+		if (!self::due($config, $now->getTimestamp())) {
+			return 'not due';
+		}
+		$dir = dirname($config['file']);
+		if (!is_dir($dir) && !@mkdir($dir, 0775, true) && !is_dir($dir)) {
+			Log::error('Kehai: pull mode cannot create ' . $dir);
+			return 'failed';
+		}
+		$lock = @fopen(self::lockFile($config['file']), 'c');
+		if ($lock === false) {
+			Log::error('Kehai: pull mode cannot open its lock file in ' . $dir);
+			return 'failed';
+		}
+		if (!flock($lock, LOCK_EX | LOCK_NB)) {
+			fclose($lock);
+			return 'locked';
+		}
+		try {
+			// Another process may have finished a pull while this one waited for the lock.
+			if (!self::due($config, $now->getTimestamp())) {
+				return 'not due';
+			}
+			touch(self::marker($config['file']), $now->getTimestamp());
+			$deadline = self::withDeadline((float)$clock(), $clock, $transport);
+			$source = Fetch::source($config, $key, $deadline);
+			Events::write($config['file'], Fetch::collect($source, $config, $now)['data']);
+			return 'written';
+		} catch (\Throwable $e) {
+			Log::error('Kehai: pull failed, the last data file stays: ' . str_replace($key, '[key]', $e->getMessage()));
+			return 'failed';
+		} finally {
+			flock($lock, LOCK_UN);
+			fclose($lock);
+		}
+	}
 
-    /** Remembers a pull for the end of the request (once per request). */
-    public static function later(array $config, string $key): void
-    {
-        self::$pending ??= [$config, $key];
-        if (!self::$registered) {
-            self::$registered = true;
-            register_shutdown_function([self::class, 'flush']);
-        }
-    }
-
-    public static function pending(): bool
-    {
-        return self::$pending !== null;
-    }
-
-    /** Runs the remembered pull after handing the answer to the visitor. */
-    public static function flush(): ?string
-    {
-        if (self::$pending === null) {
-            return null;
-        }
-        [$config, $key] = self::$pending;
-        self::$pending = null;
-        if (function_exists('fastcgi_finish_request')) {
-            fastcgi_finish_request();
-        } elseif (function_exists('litespeed_finish_request')) {
-            litespeed_finish_request();
-        }
-        return self::run($config, $key);
-    }
+	/**
+	 * A transport for the whole pull: every request gets only the whole
+	 * seconds that are left of TIMEOUT; once they are used up it throws
+	 * without a request. The overshoot is under one second with curl (the
+	 * stream fallback's timeout is per read).
+	 */
+	private static function withDeadline(float $start, Closure $clock, Closure|null $transport): Closure
+	{
+		return function (string $url, array $headers) use ($start, $clock, $transport): array {
+			$left = (float)self::TIMEOUT - ((float)$clock() - $start);
+			if ($left <= 0) {
+				throw new RuntimeException('the pull reached its time limit of ' . self::TIMEOUT . ' seconds');
+			}
+			$timeout = (int)ceil($left);
+			$request = $transport !== null ? $transport($timeout) : Http::transport($timeout);
+			return $request($url, $headers);
+		};
+	}
 }
