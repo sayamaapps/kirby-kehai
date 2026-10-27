@@ -132,7 +132,7 @@ class Cli
         Usage: kehai fetch [--file=storage/kehai/events.json] [--root=.]
                kehai check [--root=.]
 
-        fetch  reads the source and writes the anonymous data file (kehai.file,
+        fetch  reads the source and writes the anonymous data file (sayamaapps.kehai.file,
                or --file / KEHAI_FILE relative to the current directory).
                Key: DIGISTORE24_API_KEY, else site/config/kehai.php.
                Exit codes: 0 written, 1 error (the old file stays), 3 no key.

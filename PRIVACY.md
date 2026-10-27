@@ -21,7 +21,7 @@ like every other request (server log files).
 ## What is shown
 
 Anonymous purchase events only: which offer was booked, when (rounded down to
-the minute) and — if the site switches it on (`kehai.country`) — the buyer's
+the minute) and — if the site switches it on (`sayamaapps.kehai.country`) — the buyer's
 country (the VAT country of the order). Never a name, an e-mail address, an
 address, an order number, an amount or payment details. A visitor cannot tell
 from a notice who booked.
@@ -48,7 +48,7 @@ GitHub-hosted runners; nobody additional for the operator's own runner).
 
 One JSON file on the web server (`storage/kehai/events.json` by default),
 outside the web root. Per purchase: `type`, `product` (a key from the site's
-configuration), `at` and, with `kehai.country`, `country`. Every run replaces
+configuration), `at` and, with `sayamaapps.kehai.country`, `country`. Every run replaces
 the file completely; there is no archive. A purchase that is refunded
 disappears with the next run.
 

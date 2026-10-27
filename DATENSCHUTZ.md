@@ -42,13 +42,13 @@ der Hinweise durch Ihren Browser ist eine gewöhnliche Anfrage an unseren
 Server und wird wie jede andere Anfrage behandelt (siehe Abschnitt
 Server-Logfiles).
 
-### Ergänzung, wenn das Land angezeigt wird (`kehai.country`)
+### Ergänzung, wenn das Land angezeigt wird (`sayamaapps.kehai.country`)
 
 Bei Hinweisen nennen wir das Land, das bei der Bestellung für die Umsatzsteuer
 angegeben wurde. Weitere Angaben zur Person, insbesondere Name und Ort,
 werden nicht verwendet.
 
-### Ergänzung für den Abruf auf dem Webserver (`kehai.pull`)
+### Ergänzung für den Abruf auf dem Webserver (`sayamaapps.kehai.pull`)
 
 Unser Webserver ruft die Bestelldaten höchstens alle 15 Minuten selbst bei
 Digistore24 ab und speichert daraus nur die oben genannten anonymen Angaben.
@@ -65,10 +65,10 @@ Dieser Abruf geschieht unabhängig von Ihrem Besuch; dabei werden keine Daten
   gehört deshalb in die Liste der Auftragsverarbeiter bzw. Dienstleister —
   bei einem eigenen Läufer niemand zusätzlich, bei GitHub-gehosteten Läufern
   GitHub.
-- **Was gespeichert wird.** `storage/kehai/events.json` (oder `kehai.file`):
+- **Was gespeichert wird.** `storage/kehai/events.json` (oder `sayamaapps.kehai.file`):
   je Buchung Ereignistyp (`purchase`), Produkt-Schlüssel aus der eigenen
   Konfiguration, Zeitpunkt (UTC, auf Minuten abgerundet) und mit
-  `kehai.country` das Land. Kein Name, keine E-Mail-Adresse, keine
+  `sayamaapps.kehai.country` das Land. Kein Name, keine E-Mail-Adresse, keine
   Bestellnummer, kein Betrag, kein Affiliate, keine Kampagne — auch nicht in
   Ausgaben oder Logzeilen von `kehai fetch` und `kehai check`. Jeder Abruf
   ersetzt die Datei vollständig; es gibt kein Archiv.
@@ -77,7 +77,7 @@ Dieser Abruf geschieht unabhängig von Ihrem Besuch; dabei werden keine Daten
   Zeitpunkt und Land einer Bestellung zuordnen; die Datei enthält aber nichts,
   was nicht ohnehin in den eigenen Bestelldaten steht. Bei sehr wenigen
   Bestellungen aus einem kleinen Land kann das Land zusammen mit der Uhrzeit
-  für Eingeweihte auffällig sein — dann `kehai.country` ausgeschaltet lassen.
+  für Eingeweihte auffällig sein — dann `sayamaapps.kehai.country` ausgeschaltet lassen.
 - **Schlüssel.** Der Digistore24-API-Schlüssel liegt nur am Ort des Abrufs,
   nie in `config.php`. Nur im Pull-Modus liegt er auf dem Webserver, in
   `site/config/kehai.php` (nicht im Git, nicht über das Web abrufbar).

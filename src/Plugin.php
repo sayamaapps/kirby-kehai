@@ -76,7 +76,7 @@ class Plugin
 	}
 
 	/**
-	 * Language and `kehai.texts` for this request. Snippets call it before
+	 * Language and `sayamaapps.kehai.texts` for this request. Snippets call it before
 	 * printing text.
 	 */
 	public static function i18n(App $kirby, string|null $language = null): string
@@ -107,7 +107,7 @@ class Plugin
 		}
 		$key = Options::key(Options::secretsFile($kirby));
 		if ($key === null) {
-			Log::error('Kehai: kehai.pull is on, but site/config/' . Options::SECRETS . ' has no key');
+			Log::error('Kehai: sayamaapps.kehai.pull is on, but site/config/' . Options::SECRETS . ' has no key');
 			return;
 		}
 		Pull::later($config, $key);

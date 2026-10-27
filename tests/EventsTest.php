@@ -143,7 +143,7 @@ final class EventsTest extends TestCase
 			Events::write($file, $data([$event('jahreskurs', '-1 hour')], '-49 hours'));
 			[$usable, $log] = logged(fn () => Events::usable($config, $now));
 			expect(['events' => [], 'from' => null], $usable, 'file older than 48 hours: nothing');
-			holds(str_contains($log, 'Kehai: nothing shown, the data file ' . $file . ' was last updated 49 hours ago (kehai.maxStale is 48)'), 'stale file is logged');
+			holds(str_contains($log, 'Kehai: nothing shown, the data file ' . $file . ' was last updated 49 hours ago (sayamaapps.kehai.maxStale is 48)'), 'stale file is logged');
 			[, $log] = logged(fn () => Events::usable($config, $now));
 			expect('', $log, 'the same log line only once per process');
 			Events::write($file, $data([$event('jahreskurs', '-1 hour')], '-47 hours'));

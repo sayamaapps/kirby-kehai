@@ -83,11 +83,11 @@ final class DigistoreTest extends TestCase
 			foreach ([
 				'1 × billing_status aborted', '1 × billing_status unpaid', '1 × cancelled (is_canceled_now)', '1 × test order',
 				'1 × transaction_type refund', '1 × transaction_type chargeback', '1 × listed twice',
-				'1 × created before the window (a later payment of an older order)', '1 × product not in kehai.products',
+				'1 × created before the window (a later payment of an older order)', '1 × product not in sayamaapps.kehai.products',
 			] as $reason) {
 				holds(str_contains($notes, 'not counted: ' . $reason), "reason reported: $reason");
 			}
-			holds(str_contains($notes, 'product 999999 is not in kehai.products (1 purchases)'), 'unknown product id named for the configuration');
+			holds(str_contains($notes, 'product 999999 is not in sayamaapps.kehai.products (1 purchases)'), 'unknown product id named for the configuration');
 
 			// Each rule on its own, on a purchase that counts otherwise.
 			$base = $purchases[0];
@@ -212,7 +212,7 @@ final class DigistoreTest extends TestCase
 			$calls = [];
 			[$code, , $err] = $run(testConfig($tmp, ['products' => []]), $key, scripted([$ok()], $calls));
 			expect([Fetch::EXIT_ERROR, 0], [$code, count($calls)], 'no products: exit 1 before any request');
-			holds(str_contains($err, 'kehai.products is empty'), 'no products: message');
+			holds(str_contains($err, 'sayamaapps.kehai.products is empty'), 'no products: message');
 
 			$calls = [];
 			[$code, $out, $err] = $run($config, $key, scripted([$ok()], $calls));

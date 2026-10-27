@@ -7,7 +7,7 @@ use DateTimeImmutable;
 use Kirby\Exception\Exception;
 
 /**
- * Pull mode (`kehai.pull`, off by default): the site fetches by itself,
+ * Pull mode (`sayamaapps.kehai.pull`, off by default): the site fetches by itself,
  * with the key from site/config/kehai.php.
  *
  *  - At most every `pullInterval` minutes (default 15). A marker file next

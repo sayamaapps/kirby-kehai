@@ -8,11 +8,12 @@ use Kirby\Cms\Helpers;
 use WeakMap;
 
 /**
- * Reads `kehai.*` options from Kirby and hands them to Config.
+ * Reads `sayamaapps.kehai.*` options from Kirby, the 1.x `kehai.*` names as
+ * fallback, and hands them to Config.
  *
  * `null` counts as "not set", like Kirby's own option(), and both
- * spellings work, flat (`'kehai.active' => true`) and nested
- * (`'kehai' => ['active' => true]`).
+ * spellings work, flat (`'sayamaapps.kehai.active' => true`) and nested
+ * (`'sayamaapps' => ['kehai' => ['active' => true]]`).
  *
  * @package   Kirby Kehai
  * @author    Simon Räder
@@ -107,7 +108,7 @@ class Options
 	}
 
 	/**
-	 * Language of the visitor-facing text: `kehai.language`, otherwise the
+	 * Language of the visitor-facing text: `sayamaapps.kehai.language`, otherwise the
 	 * language of the current request (multi-language sites), the default
 	 * language, the first two letters of Kirby's `locale` option, English.
 	 */

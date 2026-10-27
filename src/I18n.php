@@ -6,15 +6,16 @@ namespace Sayamaapps\Kehai;
  * Visitor-facing strings, Kirby-free.
  *
  * The tables live in translations/<language>.php and are also registered as
- * Kirby plugin translations under `kehai.<key>` (index.php), so site
- * snippets can use t('kehai.close'). Kehai itself reads its own tables: a
+ * Kirby plugin translations under `sayamaapps.kehai.<key>` (and the 1.x
+ * `kehai.<key>`, config/translations.php), so site snippets can use
+ * t('sayamaapps.kehai.close'). Kehai itself reads its own tables: a
  * missing Kirby translation must never silently turn a German notice
  * English.
  *
- * `kehai.texts` replaces single strings, per language or for all:
+ * `sayamaapps.kehai.texts` replaces single strings, per language or for all:
  *
- *   'kehai.texts' => ['de' => ['bubble.purchase' => 'Jemand hat „{product}“ gekauft']]
- *   'kehai.texts' => ['close' => 'OK']
+ *   'sayamaapps.kehai.texts' => ['de' => ['bubble.purchase' => 'Jemand hat „{product}“ gekauft']]
+ *   'sayamaapps.kehai.texts' => ['close' => 'OK']
  *
  * The language is set per request (Options::language()) and defaults to
  * English. Missing keys fall back to English, then to the key.
@@ -54,7 +55,7 @@ class I18n
 		self::$language = in_array($language, self::LANGUAGES, true) ? $language : 'en';
 	}
 
-	/** Strings from `kehai.texts` for the current language; flat keys apply to every language. */
+	/** Strings from `sayamaapps.kehai.texts` for the current language; flat keys apply to every language. */
 	public static function setOverrides(mixed $texts): void
 	{
 		self::$overrides = [];

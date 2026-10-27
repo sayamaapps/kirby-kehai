@@ -33,7 +33,7 @@ use Kirby\Exception\Exception;
  * An event has exactly these fields. `type` is one of TYPES, `product` a
  * product key from the site's configuration (never the source's id or
  * name), `at` the time in UTC rounded down to the minute, `country` a
- * two-letter code and only present when `kehai.country` is on. clean() is
+ * two-letter code and only present when `sayamaapps.kehai.country` is on. clean() is
  * the one gate every event passes, when it is written and when it is read:
  * whatever else a source adapter or a hand-edited file carries is dropped.
  *
@@ -249,7 +249,7 @@ class Events
 		$age = $now->getTimestamp() - $generated->getTimestamp();
 		if ($age > $config['maxStale'] * 3600) {
 			Log::error('Kehai: nothing shown, the data file ' . $config['file'] . ' was last updated ' . intdiv($age, 3600)
-				. ' hours ago (kehai.maxStale is ' . $config['maxStale'] . ')');
+				. ' hours ago (sayamaapps.kehai.maxStale is ' . $config['maxStale'] . ')');
 			return ['events' => [], 'from' => null];
 		}
 		$limit = $now->getTimestamp() + self::FUTURE_TOLERANCE;

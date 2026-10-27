@@ -6,7 +6,7 @@ use DateTimeImmutable;
 
 /**
  * What a page shows, from the usable events (Kirby-free). The texts come
- * from I18n; the caller sets the language and `kehai.texts` first.
+ * from I18n; the caller sets the language and `sayamaapps.kehai.texts` first.
  *
  * Nothing here adds, repeats or rounds up: the bubble gets the newest
  * real events, each once, not older than `maxAge` days; the summary counts
@@ -79,7 +79,7 @@ class Display
 			return $days;
 		}
 		Log::error('Kehai: the summary for "' . $name . '" asks for ' . $days . ' days, but the data file covers ' . $covered
-			. ' (the fetch reads max(kehai.maxAge, kehai.summaryDays) days); showing ' . $covered);
+			. ' (the fetch reads max(sayamaapps.kehai.maxAge, sayamaapps.kehai.summaryDays) days); showing ' . $covered);
 		return $covered;
 	}
 
