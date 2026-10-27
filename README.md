@@ -179,7 +179,7 @@ Kehai has no runtime dependencies. Two parts are its own, on purpose:
 
 - **The API key** is never printed. It stays in the runner's secrets; in pull mode it sits in `site/config/kehai.php`, outside git and not served.
 
-See [PRIVACY.md](PRIVACY.md) (English) and [DATENSCHUTZ.md](DATENSCHUTZ.md) (German text for privacy policies). They are not legal advice.
+See [PRIVACY.md](PRIVACY.md) (English) and [DATENSCHUTZ.md](docs/DATENSCHUTZ.md) (German text for privacy policies). They are not legal advice.
 
 ## Maintenance
 

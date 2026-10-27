@@ -14,7 +14,7 @@ All notable changes to this project are documented here. Versions follow
   reader for the old format, so a site never shows nothing between the update
   and the next fetch. An optional field that older readers ignore (such as
   `from`) needs no new `format`.
-- A change to the privacy text (`DATENSCHUTZ.md` / `PRIVACY.md`) is marked
+- A change to the privacy text (`docs/DATENSCHUTZ.md` / `PRIVACY.md`) is marked
   **[privacy text]**. Every site using the plugin must then review its privacy
   policy.
 
@@ -29,6 +29,7 @@ Code layout and tooling only. Nothing a site sees, stores or has to change; ever
 - The 1.x functions are wrappers in `legacy.php`, marked `@deprecated` in their docblocks. They print no notice.
 - Tests are PHPUnit; CI also runs Psalm, PHPMD, Composer checks and the Kirby code style. Tests run on the lowest, the locked and the highest dependency versions.
 - The example workflow moved to `docs/kehai-fetch.yml`.
+- The German privacy text moved to `docs/DATENSCHUTZ.md`, out of the package; its content is unchanged. `PRIVACY.md` stays in the root.
 
 ### Fixed
 
