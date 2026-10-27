@@ -101,24 +101,38 @@ class Events
 	 */
 	public static function clean(mixed $event, bool $country, array|null $keys = null): array|null
 	{
-		if (!is_array($event)) {
+		if (!is_array($event) || !self::wellFormed($event, $keys)) {
 			return null;
 		}
-		$type = $event['type'] ?? null;
-		$product = $event['product'] ?? null;
-		$at = $event['at'] ?? null;
-		if (!in_array($type, self::TYPES, true) ||
-			!is_string($product) || !preg_match(Config::KEY_PATTERN, $product) ||
-			($keys !== null && !in_array($product, $keys, true)) ||
-			!is_string($at) || !preg_match(self::AT_PATTERN, $at) || self::parse($at) === null) {
-			return null;
-		}
-		$clean = ['type' => $type, 'product' => $product, 'at' => $at];
+		$clean = ['type' => $event['type'], 'product' => $event['product'], 'at' => $event['at']];
 		$code = $event['country'] ?? null;
 		if ($country && is_string($code) && preg_match('/^[A-Z]{2}\z/', $code)) {
 			$clean['country'] = $code;
 		}
 		return $clean;
+	}
+
+	/**
+	 * The valid events of a list, and how many entries were dropped.
+	 *
+	 * @param array<mixed> $list
+	 * @param list<string>|null $keys
+	 * @return array{0: list<array>, 1: int}
+	 */
+	private static function cleanAll(array $list, bool $country, array|null $keys): array
+	{
+		$events = [];
+		$dropped = 0;
+		foreach ($list as $event) {
+			$clean = self::clean($event, $country, $keys);
+			if ($clean === null) {
+				$dropped++;
+			} else {
+				$events[] = $clean;
+			}
+		}
+		usort($events, fn (array $a, array $b) => strcmp($b['at'], $a['at']));
+		return [$events, $dropped];
 	}
 
 	/**
@@ -129,6 +143,15 @@ class Events
 	public static function covered(DateTimeImmutable|null $from, array $config, DateTimeImmutable $now): int
 	{
 		return $from === null ? Config::window($config) : max(0, intdiv($now->getTimestamp() - $from->getTimestamp(), 86400));
+	}
+
+	/** The error for a file whose `format` is not the one this version reads, or null. */
+	private static function formatError(array $data): string|null
+	{
+		if (($data['format'] ?? null) === self::FORMAT) {
+			return null;
+		}
+		return 'unknown format ' . Text::plain(json_encode($data['format'] ?? null), 20) . ' (this version reads format ' . self::FORMAT . ')';
 	}
 
 	/** UTC, rounded down to the minute, as stored. */
@@ -166,8 +189,9 @@ class Events
 		if (!is_array($data)) {
 			return ['error' => 'not JSON'] + $empty;
 		}
-		if (($data['format'] ?? null) !== self::FORMAT) {
-			return ['error' => 'unknown format ' . Text::plain(json_encode($data['format'] ?? null), 20) . ' (this version reads format ' . self::FORMAT . ')'] + $empty;
+		$formatError = self::formatError($data);
+		if ($formatError !== null) {
+			return ['error' => $formatError] + $empty;
 		}
 		$generated = self::parse($data['generated'] ?? null);
 		if ($generated === null || !is_array($data['events'] ?? null)) {
@@ -180,25 +204,21 @@ class Events
 				return ['error' => 'no valid "from" time'] + $empty;
 			}
 		}
-		$events = [];
-		$dropped = 0;
-		foreach ($data['events'] as $event) {
-			$clean = self::clean($event, $country, $keys);
-			if ($clean === null) {
-				$dropped++;
-			} else {
-				$events[] = $clean;
-			}
-		}
-		usort($events, fn (array $a, array $b) => strcmp($b['at'], $a['at']));
+		[$events, $dropped] = self::cleanAll($data['events'], $country, $keys);
 		return [
 			'error'     => null,
 			'generated' => $generated,
 			'from'      => $from,
-			'source'    => is_string($data['source'] ?? null) ? Text::plain($data['source'], 40) : null,
+			'source'    => self::sourceOf($data),
 			'events'    => $events,
 			'dropped'   => $dropped,
 		];
+	}
+
+	/** The `source` of the file, shortened and made plain text; null when it has none. */
+	private static function sourceOf(array $data): string|null
+	{
+		return is_string($data['source'] ?? null) ? Text::plain($data['source'], 40) : null;
 	}
 
 	public static function time(array $event): DateTimeImmutable
@@ -236,6 +256,17 @@ class Events
 			'events' => array_values(array_filter($read['events'], fn (array $e) => self::time($e)->getTimestamp() <= $limit)),
 			'from'   => $read['from'],
 		];
+	}
+
+	/** Type, product key (one of $keys when given) and minute of an event are all valid. */
+	private static function wellFormed(array $event, array|null $keys): bool
+	{
+		$product = $event['product'] ?? null;
+		$at = $event['at'] ?? null;
+		return in_array($event['type'] ?? null, self::TYPES, true) &&
+			is_string($product) && preg_match(Config::KEY_PATTERN, $product) === 1 &&
+			($keys === null || in_array($product, $keys, true)) &&
+			is_string($at) && preg_match(self::AT_PATTERN, $at) === 1 && self::parse($at) !== null;
 	}
 
 	/**
