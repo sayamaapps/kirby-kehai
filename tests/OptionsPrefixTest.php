@@ -46,6 +46,27 @@ final class OptionsPrefixTest extends TestCase
 		$this->assertSame(['Kehai: kehai.active is deprecated, use sayamaapps.kehai.active'], $deprecations);
 	}
 
+	public function testOldSpellingIsReportedOncePerName(): void
+	{
+		$deprecations = [];
+		set_error_handler(function (int $level, string $message) use (&$deprecations): bool {
+			$deprecations[] = $message;
+			return true;
+		}, E_USER_DEPRECATED);
+
+		try {
+			$this->withApp(['debug' => true, 'kehai.max' => 3], function (App $kirby): void {
+				for ($i = 0; $i < 3; $i++) {
+					$this->assertSame(3, Options::get($kirby, 'max'), 'kehai.max is read on every call');
+				}
+			});
+		} finally {
+			restore_error_handler();
+		}
+
+		$this->assertSame(['Kehai: kehai.max is deprecated, use sayamaapps.kehai.max'], $deprecations);
+	}
+
 	public function testUnsetFallsBackToTheDefault(): void
 	{
 		$this->withApp([], function (App $kirby): void {

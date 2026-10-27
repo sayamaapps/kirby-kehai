@@ -31,6 +31,9 @@ class Options
 	/** The file with the API key for pull mode, in Kirby's config root. Keep it out of git. */
 	public const SECRETS = 'kehai.php';
 
+	/** Option keys already reported as deprecated in this process (debug mode only). */
+	private static array $reported = [];
+
 	/** Project root: Kirby's `base` root, otherwise the directory above `site/`. */
 	public static function base(App $kirby): string
 	{
@@ -77,11 +80,12 @@ class Options
 		}
 
 		$legacy = $kirby->option(self::LEGACY_PREFIX . $key);
-		if ($legacy !== null) {
-			Helpers::deprecated(
-				'Kehai: kehai.' . $key . ' is deprecated, use sayamaapps.kehai.' . $key,
-				'option-prefix'
-			);
+		// Kirby does not drop repeats, so each old name is reported once per process.
+		if ($legacy !== null && !isset(self::$reported[$key]) && Helpers::deprecated(
+			'Kehai: kehai.' . $key . ' is deprecated, use sayamaapps.kehai.' . $key,
+			'option-prefix'
+		)) {
+			self::$reported[$key] = true;
 		}
 
 		return $legacy ?? $default;
