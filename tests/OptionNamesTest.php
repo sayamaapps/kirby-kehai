@@ -13,20 +13,6 @@ use Sayamaapps\Kehai\Options;
 #[CoversClass(Options::class)]
 final class OptionNamesTest extends TestCase
 {
-	public function testTheOneNameIsRead(): void
-	{
-		$this->withApp(['kehai.active' => true], function (App $kirby): void {
-			$this->assertSame(true, Options::get($kirby, 'active'), 'kehai.active is read');
-		});
-	}
-
-	public function testTheNewSpellingIsNotRead(): void
-	{
-		$this->withApp(['sayamaapps.kehai.active' => true], function (App $kirby): void {
-			$this->assertNull(Options::get($kirby, 'active'), 'sayamaapps.kehai.active is not read');
-		});
-	}
-
 	public function testReadingInDebugModeReportsNothing(): void
 	{
 		$reports = [];
@@ -46,6 +32,20 @@ final class OptionNamesTest extends TestCase
 		}
 
 		$this->assertSame([], $reports, 'no run-time deprecation notice in 1.x');
+	}
+
+	public function testTheNewSpellingIsNotRead(): void
+	{
+		$this->withApp(['sayamaapps.kehai.active' => true], function (App $kirby): void {
+			$this->assertNull(Options::get($kirby, 'active'), 'sayamaapps.kehai.active is not read');
+		});
+	}
+
+	public function testTheOneNameIsRead(): void
+	{
+		$this->withApp(['kehai.active' => true], function (App $kirby): void {
+			$this->assertSame(true, Options::get($kirby, 'active'), 'kehai.active is read');
+		});
 	}
 
 	public function testUnsetFallsBackToTheDefault(): void

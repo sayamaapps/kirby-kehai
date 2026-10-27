@@ -38,6 +38,15 @@ class Pull
 	public const TIMEOUT = 5;
 
 	/**
+	 * Seconds on a monotonic clock, fn (): float. Kept from 1.x, as a test
+	 * seam; the $clock parameter of run() does the same.
+	 *
+	 * @deprecated use the $clock parameter of run()
+	 * @internal
+	 */
+	public static Closure|null $clock = null;
+
+	/**
 	 * Makes the transport for a timeout: Http::transport() unless a test
 	 * replaces the network. fn (int $timeout): Closure. Kept from 1.x, as a
 	 * test seam; the $transport parameter of run() does the same.
@@ -45,16 +54,7 @@ class Pull
 	 * @deprecated use the $transport parameter of run()
 	 * @internal
 	 */
-	public static ?Closure $transports = null;
-
-	/**
-	 * Seconds on a monotonic clock, fn (): float. Kept from 1.x, as a test
-	 * seam; the $clock parameter of run() does the same.
-	 *
-	 * @deprecated use the $clock parameter of run()
-	 * @internal
-	 */
-	public static ?Closure $clock = null;
+	public static Closure|null $transports = null;
 
 	/** @var array{0: array, 1: string}|null */
 	private static array|null $pending = null;

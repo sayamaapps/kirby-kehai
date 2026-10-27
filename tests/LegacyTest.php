@@ -21,6 +21,17 @@ final class LegacyTest extends TestCase
 		});
 	}
 
+	public function testClassAliasesCatchTheSourceException(): void
+	{
+		require_once dirname(__DIR__) . '/legacy.php';
+
+		try {
+			throw new Sayamaapps\Kehai\SourceException('test');
+		} catch (Kehai\SourceException $e) {
+			$this->assertSame('test', $e->getMessage(), 'catch by the 1.x name works');
+		}
+	}
+
 	public function testClassAliasesResolveToTheNewClasses(): void
 	{
 		require_once dirname(__DIR__) . '/legacy.php';
@@ -57,17 +68,6 @@ final class LegacyTest extends TestCase
 		}
 
 		$this->assertSame([], $reports, 'the 1.x functions print no notice');
-	}
-
-	public function testClassAliasesCatchTheSourceException(): void
-	{
-		require_once dirname(__DIR__) . '/legacy.php';
-
-		try {
-			throw new Sayamaapps\Kehai\SourceException('test');
-		} catch (Kehai\SourceException $e) {
-			$this->assertSame('test', $e->getMessage(), 'catch by the 1.x name works');
-		}
 	}
 
 	public function testPullLaterDoesNothingWhileTheModuleIsOff(): void
