@@ -42,6 +42,24 @@ class Display
 		return $entries;
 	}
 
+	/** Purchases of the given product keys at or after $oldest (a Unix timestamp). */
+	private static function countSince(array $events, array $products, int $oldest): int
+	{
+		$count = 0;
+		foreach ($events as $event) {
+			if ($event['type'] === 'purchase' && in_array($event['product'], $products, true) && Events::time($event)->getTimestamp() >= $oldest) {
+				$count++;
+			}
+		}
+		return $count;
+	}
+
+	/** The product keys of a product key or a group, or null when the name is neither. */
+	private static function productsOf(array $config, string $name): array|null
+	{
+		return $config['groups'][$name]['products'] ?? (in_array($name, Config::keys($config), true) ? [$name] : null);
+	}
+
 	/** "Someone from Austria booked “Jahreskurs”" — the country only when switched on and named. */
 	public static function sentence(array $event, array $config, string $language): string
 	{
@@ -51,6 +69,17 @@ class Display
 			return I18n::t('bubble.' . $event['type'] . '.country', $values + ['country' => I18n::t('country.' . $code)]);
 		}
 		return I18n::t('bubble.' . $event['type'], $values);
+	}
+
+	/** The days to count: the asked number, or the days the file covers, which is logged when shorter. */
+	private static function shortened(string $name, int $days, int $covered): int
+	{
+		if ($days <= $covered) {
+			return $days;
+		}
+		Log::error('Kehai: the summary for "' . $name . '" asks for ' . $days . ' days, but the data file covers ' . $covered
+			. ' (the fetch reads max(kehai.maxAge, kehai.summaryDays) days); showing ' . $covered);
+		return $covered;
 	}
 
 	/**
@@ -74,7 +103,7 @@ class Display
 		int|null $min = null,
 		DateTimeImmutable|null $from = null
 	): array|null {
-		$products = $config['groups'][$name]['products'] ?? (in_array($name, Config::keys($config), true) ? [$name] : null);
+		$products = self::productsOf($config, $name);
 		if ($products === null) {
 			Log::error('Kehai: the summary asks for "' . $name . '", which is neither a product key nor a group');
 			return null;
@@ -85,19 +114,9 @@ class Display
 			Log::error('Kehai: the summary for "' . $name . '" shows nothing, the data file covers less than a day');
 			return null;
 		}
-		if ($days > $covered) {
-			Log::error('Kehai: the summary for "' . $name . '" asks for ' . $days . ' days, but the data file covers ' . $covered
-				. ' (the fetch reads max(kehai.maxAge, kehai.summaryDays) days); showing ' . $covered);
-			$days = $covered;
-		}
+		$days = self::shortened($name, $days, $covered);
 		$min = max(1, $min ?? $config['summaryMin']);
-		$oldest = $now->getTimestamp() - $days * 86400;
-		$count = 0;
-		foreach ($events as $event) {
-			if ($event['type'] === 'purchase' && in_array($event['product'], $products, true) && Events::time($event)->getTimestamp() >= $oldest) {
-				$count++;
-			}
-		}
+		$count = self::countSince($events, $products, $now->getTimestamp() - $days * 86400);
 		if ($count < $min) {
 			return null;
 		}
