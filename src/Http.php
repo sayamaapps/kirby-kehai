@@ -65,12 +65,12 @@ class Http
 			'user_agent'      => self::USER_AGENT,
 		]]);
 		$body = @file_get_contents($url, false, $context, 0, self::MAX_BYTES + 1);
-		// http_get_last_response_headers() since PHP 8.4; the magic local
-		// variable is deprecated in 8.5, hence the indirection.
-		$legacy = 'http_response_header';
+		// PHP 8.4 and later: http_get_last_response_headers(). Older PHP sets the
+		// local variable $http_response_header, which PHP 8.5 deprecates; the
+		// ternary reads it only where the function does not exist.
 		$lines = function_exists('http_get_last_response_headers')
 			? (http_get_last_response_headers() ?? [])
-			: ($$legacy ?? []);
+			: ($http_response_header ?? []);
 		if ($body === false) {
 			throw new RuntimeException(error_get_last()['message'] ?? 'request failed');
 		}

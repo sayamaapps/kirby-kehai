@@ -184,7 +184,11 @@ class Events
 		$dropped = 0;
 		foreach ($data['events'] as $event) {
 			$clean = self::clean($event, $country, $keys);
-			$clean === null ? $dropped++ : $events[] = $clean;
+			if ($clean === null) {
+				$dropped++;
+			} else {
+				$events[] = $clean;
+			}
 		}
 		usort($events, fn (array $a, array $b) => strcmp($b['at'], $a['at']));
 		return [
