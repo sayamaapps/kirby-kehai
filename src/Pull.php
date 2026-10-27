@@ -57,8 +57,8 @@ class Pull
 	/**
 	 * Runs the remembered pull after handing the answer to the visitor.
 	 *
-	 * @param Closure|null $transport see run(); null uses the network
-	 * @param Closure|null $clock see run(); null uses the monotonic clock
+	 * @param $transport see run(); null uses the network
+	 * @param $clock see run(); null uses the monotonic clock
 	 */
 	public static function flush(Closure|null $transport = null, Closure|null $clock = null): string|null
 	{
@@ -103,9 +103,9 @@ class Pull
 	/**
 	 * One pull, now, if it is due and no other process is at it.
 	 *
-	 * @param Closure|null $transport Makes the transport for a timeout, fn (int $timeout): Closure.
-	 *        Called once per request, with the whole seconds that are left. Null uses the network.
-	 * @param Closure|null $clock Seconds on a monotonic clock, fn (): float. Null uses hrtime().
+	 * @param $transport Makes the transport for a timeout, fn (int $timeout): Closure.
+	 *                  Called once per request, with the whole seconds that are left. Null uses the network.
+	 * @param $clock Seconds on a monotonic clock, fn (): float. Null uses hrtime().
 	 * @return string `not due`, `locked`, `written` or `failed`
 	 */
 	public static function run(
