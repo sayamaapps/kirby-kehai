@@ -206,7 +206,7 @@ final class KirbyTest extends TestCase
 
 			// ---- 6. Pull mode: the page and the route never wait for the source ------------------------------
 			$calls = [];
-			Pull::$transports = function (int $timeout) use (&$calls): Closure {
+			$pullTransport = function (int $timeout) use (&$calls): Closure {
 				return scripted([['status' => 200, 'body' => file_get_contents(__DIR__ . '/fixtures/digistore-purchases.json')]], $calls);
 			};
 			mkdir($tmp . '/site/config', 0700, true);
@@ -218,7 +218,7 @@ final class KirbyTest extends TestCase
 			[$response] = $route($pull);
 			expect([200, 0], [$response->code(), count($calls)], 'pull mode: the route answers without a request');
 			holds(Pull::pending(), 'pull mode: the route leaves a pull for after the answer');
-			expect('written', Pull::flush(), 'pull mode: the pull runs after the answer');
+			expect('written', Pull::flush($pullTransport), 'pull mode: the pull runs after the answer');
 			expect(1, count($calls), 'pull mode: one request');
 			holds(!str_contains(file_get_contents($file), 'Annegret'), 'pull mode: the file is anonymous');
 			[$response] = $route($pull);
@@ -250,7 +250,6 @@ final class KirbyTest extends TestCase
 			[, , $log] = $route($pull);
 			holds(!Pull::pending() && str_contains($log, 'kehai.pull is on, but site/config/kehai.php has no key'), 'pull mode without key: logged, nothing scheduled');
 			expect('', trim((string)$kirby($pull)->snippet('kehai/bubble', ['products' => ['nope']], true)), 'pull mode without a key: nothing to show, nothing printed (the route could not fetch anyway)');
-			Pull::$transports = null;
 
 			// ---- 7. A site's own snippet wins ------------------------------------------------------------------
 			$writeFile([['type' => 'purchase', 'product' => 'jahreskurs', 'at' => $minute('-1 hour')]]);
@@ -259,7 +258,6 @@ final class KirbyTest extends TestCase
 			expect('OWN 1', trim((string)$kirby($on)->snippet('kehai/summary', ['product' => 'jahreskurs'], true)), 'site/snippets/kehai/summary.php overrides the package snippet');
 
 		} finally {
-			Pull::$transports = null;
 			removeTree($tmp);
 		}
 	}

@@ -27,10 +27,12 @@ final class PullTest extends TestCase
 		$fixture = file_get_contents(__DIR__ . '/fixtures/digistore-purchases.json');
 		$calls = [];
 		$timeouts = [];
+		$clockFn = null;
 		$answer = ['status' => 200, 'body' => $fixture];
 		/** The transport factory Pull uses; records the timeout it is asked for. */
-		$serve = function (array $script) use (&$calls, &$timeouts): void {
-			Pull::$transports = function (int $timeout) use ($script, &$calls, &$timeouts): Closure {
+		$transport = null;
+		$serve = function (array $script) use (&$transport, &$calls, &$timeouts): void {
+			$transport = function (int $timeout) use ($script, &$calls, &$timeouts): Closure {
 				$timeouts[] = $timeout;
 				return scripted($script, $calls);
 			};
@@ -43,14 +45,14 @@ final class PullTest extends TestCase
 
 			// A pull: written, with the five-second transport, marker set.
 			$serve([$answer]);
-			expect('written', Pull::run($config, $key, $now), 'first pull writes');
+			expect('written', Pull::run($config, $key, $now, $transport, $clockFn), 'first pull writes');
 			expect([5], $timeouts, 'the transport is made with the five-second limit');
 			expect(4, count(json_decode(file_get_contents($file), true)['events']), 'the anonymous file');
 			expect(false, Pull::due($config, $now->getTimestamp()), 'right after: not due');
 
 			// At most every 15 minutes.
 			$calls = [];
-			expect('not due', Pull::run($config, $key, $at('+14 minutes')), '14 minutes later: not due');
+			expect('not due', Pull::run($config, $key, $at('+14 minutes'), $transport, $clockFn), '14 minutes later: not due');
 			expect(0, count($calls), 'no request while not due');
 			touch(Pull::marker($file), $at('-15 minutes')->getTimestamp());
 			expect(true, Pull::due($config, $now->getTimestamp()), '15 minutes after the last attempt: due');
@@ -61,7 +63,7 @@ final class PullTest extends TestCase
 			holds(flock($lock, LOCK_EX | LOCK_NB), 'test holds the lock');
 			$calls = [];
 			$serve([$answer]);
-			expect('locked', Pull::run($config, $key, $now), 'lock taken: skipped');
+			expect('locked', Pull::run($config, $key, $now, $transport, $clockFn), 'lock taken: skipped');
 			expect(0, count($calls), 'lock taken: no request');
 			flock($lock, LOCK_UN);
 			fclose($lock);
@@ -76,7 +78,7 @@ final class PullTest extends TestCase
 				$before = file_get_contents($file);
 				$serve([$failure]);
 				Log::forget();
-				[$outcome, $log] = logged(fn () => Pull::run($config, $key, $now));
+				[$outcome, $log] = logged(fn () => Pull::run($config, $key, $now, $transport, $clockFn));
 				expect('failed', $outcome, "$what: failed");
 				expect($before, file_get_contents($file), "$what: last good file untouched");
 				holds(str_contains($log, 'Kehai: pull failed, the last data file stays: Digistore24'), "$what: logged ($log)");
@@ -99,13 +101,13 @@ final class PullTest extends TestCase
 			$tick = 0.0;
 			$slowCalls = 0;
 			$slowTimeouts = [];
-			Pull::$clock = function () use (&$tick): float {
+			$clockFn = function () use (&$tick): float {
 				return $tick;
 			};
 			// Every request takes two seconds on the fake clock; the answers are served in order.
-			$slow = function (array $queue, float $step = 2.0) use (&$tick, &$slowCalls, &$slowTimeouts): void {
+			$slow = function (array $queue, float $step = 2.0) use (&$tick, &$slowCalls, &$slowTimeouts, &$transport): void {
 				$answers = $queue;
-				Pull::$transports = function (int $timeout) use (&$answers, &$tick, &$slowCalls, &$slowTimeouts, $step): Closure {
+				$transport = function (int $timeout) use (&$answers, &$tick, &$slowCalls, &$slowTimeouts, $step): Closure {
 					$slowTimeouts[] = $timeout;
 					return function () use (&$answers, &$tick, &$slowCalls, $step): array {
 						$slowCalls++;
@@ -122,7 +124,7 @@ final class PullTest extends TestCase
 			$slowTimeouts = [];
 			$slow(array_fill(0, 5, ['status' => 200, 'body' => $pageBody($fullPage)]));
 			Log::forget();
-			[$outcome, $log] = logged(fn () => Pull::run($config, $key, $now));
+			[$outcome, $log] = logged(fn () => Pull::run($config, $key, $now, $transport, $clockFn));
 			expect('failed', $outcome, 'slow pages: the deadline ends the pull');
 			expect([5, 3, 1], $slowTimeouts, 'slow pages: each request gets only the time that is left');
 			expect(3, $slowCalls, 'slow pages: no request once the five seconds are used up');
@@ -137,7 +139,7 @@ final class PullTest extends TestCase
 			$slowTimeouts = [];
 			$slow([['status' => 200, 'body' => $pageBody($fullPage)], ['status' => 200, 'body' => $pageBody([$base])]]);
 			Log::forget();
-			[$outcome, $log] = logged(fn () => Pull::run($config, $key, $now));
+			[$outcome, $log] = logged(fn () => Pull::run($config, $key, $now, $transport, $clockFn));
 			expect('written', $outcome, "two pages of two seconds each fit into the deadline ($log)");
 			expect([5, 3], $slowTimeouts, 'two pages: the second request gets the three seconds that are left');
 			expect(2, $slowCalls, 'two pages: two requests');
@@ -148,9 +150,9 @@ final class PullTest extends TestCase
 			$slowTimeouts = [];
 			$slow(array_fill(0, 3, ['status' => 200, 'body' => $pageBody($fullPage)]), 4.5);
 			Log::forget();
-			[$outcome] = logged(fn () => Pull::run($config, $key, $now));
+			[$outcome] = logged(fn () => Pull::run($config, $key, $now, $transport, $clockFn));
 			expect(['failed', [5, 1], 2], [$outcome, $slowTimeouts, $slowCalls], 'half a second left is rounded up to one (never 0 = no limit); the third page is refused');
-			Pull::$clock = null;
+			$clockFn = null;
 
 			// later(): remembered, not run; flush() runs it (at shutdown, after the answer) with the real clock.
 			touch(Pull::marker($file), time() - 3600);
@@ -160,19 +162,17 @@ final class PullTest extends TestCase
 			holds(Pull::pending(), 'later() remembers the pull');
 			expect(0, count($calls), 'later() makes no request');
 			Pull::later($config, $key);
-			expect('written', Pull::flush(), 'flush() runs it once');
+			expect('written', Pull::flush($transport), 'flush() runs it once');
 			expect(1, count($calls), 'one request for two later() calls');
-			expect(null, Pull::flush(), 'nothing left to flush');
+			expect(null, Pull::flush($transport), 'nothing left to flush');
 
 			// A data file directory that does not exist yet is created.
 			$fresh = testConfig($tmp, ['pull' => true, 'file' => 'other/dir/events.json']);
 			$serve([$answer]);
-			expect('written', Pull::run($fresh, $key, $now), 'directory created');
+			expect('written', Pull::run($fresh, $key, $now, $transport, $clockFn), 'directory created');
 			holds(is_file($tmp . '/other/dir/events.json') && is_file($tmp . '/other/dir/.kehai-pull'), 'file and marker in the new directory');
 
 		} finally {
-			Pull::$transports = null;
-			Pull::$clock = null;
 			removeTree($tmp);
 		}
 	}

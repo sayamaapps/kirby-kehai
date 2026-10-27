@@ -36,16 +36,6 @@ class Pull
 {
 	public const TIMEOUT = 5;
 
-	/** Seconds on a monotonic clock, for tests: fn (): float. Default (float) hrtime(true) / 1e9. */
-	public static Closure|null $clock = null;
-
-	/**
-	 * Makes the transport for a timeout: Http::transport() unless a test
-	 * replaces the network. fn (int $timeout): Closure
-	 * Called once per request, with the whole seconds that are left.
-	 */
-	public static Closure|null $transports = null;
-
 	/** @var array{0: array, 1: string}|null */
 	private static array|null $pending = null;
 	private static bool $registered = false;
@@ -64,8 +54,13 @@ class Pull
 		return !is_file($marker) || (int)filemtime($marker) <= $now - $config['pullInterval'] * 60;
 	}
 
-	/** Runs the remembered pull after handing the answer to the visitor. */
-	public static function flush(): string|null
+	/**
+	 * Runs the remembered pull after handing the answer to the visitor.
+	 *
+	 * @param Closure|null $transport see run(); null uses the network
+	 * @param Closure|null $clock see run(); null uses the monotonic clock
+	 */
+	public static function flush(Closure|null $transport = null, Closure|null $clock = null): string|null
 	{
 		if (self::$pending === null) {
 			return null;
@@ -77,7 +72,7 @@ class Pull
 		} elseif (function_exists('litespeed_finish_request')) {
 			litespeed_finish_request();
 		}
-		return self::run($config, $key);
+		return self::run($config, $key, null, $transport, $clock);
 	}
 
 	/** Remembers a pull for the end of the request (once per request). */
@@ -100,11 +95,6 @@ class Pull
 		return dirname($file) . '/.kehai-pull';
 	}
 
-	private static function now(): float
-	{
-		return self::$clock !== null ? (self::$clock)() : (float)hrtime(true) / 1e9;
-	}
-
 	public static function pending(): bool
 	{
 		return self::$pending !== null;
@@ -113,11 +103,20 @@ class Pull
 	/**
 	 * One pull, now, if it is due and no other process is at it.
 	 *
+	 * @param Closure|null $transport Makes the transport for a timeout, fn (int $timeout): Closure.
+	 *        Called once per request, with the whole seconds that are left. Null uses the network.
+	 * @param Closure|null $clock Seconds on a monotonic clock, fn (): float. Null uses hrtime().
 	 * @return string `not due`, `locked`, `written` or `failed`
 	 */
-	public static function run(array $config, string $key, DateTimeImmutable|null $now = null): string
-	{
+	public static function run(
+		array $config,
+		string $key,
+		DateTimeImmutable|null $now = null,
+		Closure|null $transport = null,
+		Closure|null $clock = null,
+	): string {
 		$now ??= new DateTimeImmutable('now');
+		$clock ??= static fn (): float => (float)hrtime(true) / 1e9;
 		if (!self::due($config, $now->getTimestamp())) {
 			return 'not due';
 		}
@@ -141,8 +140,8 @@ class Pull
 				return 'not due';
 			}
 			touch(self::marker($config['file']), $now->getTimestamp());
-			$transport = self::withDeadline(self::now());
-			$source = Fetch::source($config, $key, $transport);
+			$deadline = self::withDeadline((float)$clock(), $clock, $transport);
+			$source = Fetch::source($config, $key, $deadline);
 			Events::write($config['file'], Fetch::collect($source, $config, $now)['data']);
 			return 'written';
 		} catch (\Throwable $e) {
@@ -160,16 +159,16 @@ class Pull
 	 * without a request. The overshoot is under one second with curl (the
 	 * stream fallback's timeout is per read).
 	 */
-	private static function withDeadline(float $start): Closure
+	private static function withDeadline(float $start, Closure $clock, Closure|null $transport): Closure
 	{
-		return function (string $url, array $headers) use ($start): array {
-			$left = (float)self::TIMEOUT - (self::now() - $start);
+		return function (string $url, array $headers) use ($start, $clock, $transport): array {
+			$left = (float)self::TIMEOUT - ((float)$clock() - $start);
 			if ($left <= 0) {
 				throw new RuntimeException('the pull reached its time limit of ' . self::TIMEOUT . ' seconds');
 			}
 			$timeout = (int)ceil($left);
-			$transport = self::$transports !== null ? (self::$transports)($timeout) : Http::transport($timeout);
-			return $transport($url, $headers);
+			$request = $transport !== null ? $transport($timeout) : Http::transport($timeout);
+			return $request($url, $headers);
 		};
 	}
 }
