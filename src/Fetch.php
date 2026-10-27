@@ -10,7 +10,7 @@ use Kirby\Exception\Exception;
  * `kehai fetch`: read the source, write the anonymous data file. Also the
  * core of pull mode (collect()).
  *
- * Exit codes, as in Koe:
+ * Exit codes:
  *   0  file written
  *   1  error (no products configured, source or write failure); the old file stays
  *   3  no API key — "skipped", a workflow turns this into a notice

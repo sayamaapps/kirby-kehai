@@ -10,7 +10,7 @@ use Kirby\Http\Response;
 /**
  * The Kirby glue: the functions and methods the plugin's registration and its
  * snippets call. Every method takes the Kirby app, so nothing reads it
- * implicitly (IDM-2). The plugin's public names are wrappers in legacy.php.
+ * implicitly. The plugin's public names are wrappers in legacy.php.
  *
  * @package   Kirby Kehai
  * @author    Simon Räder

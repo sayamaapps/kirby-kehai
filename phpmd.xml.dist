@@ -7,7 +7,7 @@
 	<description>PHP Mess Detector rules for Kehai. Every excluded rule has its reason next to it; the limits are the PHPMD defaults.</description>
 
 	<rule ref="rulesets/cleancode.xml">
-		<!-- Config, Events, Plugin and the other classes are static services: they take the Kirby app or the configuration as an argument (IDM-2). -->
+		<!-- Config, Events, Plugin and the other classes are static services: they take the Kirby app or the configuration as an argument. -->
 		<exclude name="StaticAccess" />
 		<!-- The country switch of Events::read() and of the Digistore24 source is an on/off option. -->
 		<exclude name="BooleanArgumentFlag" />
