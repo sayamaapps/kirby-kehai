@@ -32,7 +32,7 @@ class Config
 	/** Product keys and group names: lower case, digits, `-` and `_`. */
 	public const KEY_PATTERN = '/^[a-z0-9][a-z0-9_-]{0,49}\z/';
 
-	/** Option names read from Kirby, all as `kehai.<name>`. */
+	/** Option names read from Kirby, as `sayamaapps.kehai.<name>` or the 1.x `kehai.<name>`. */
 	public const KEYS = [
 		'active', 'file', 'source', 'products', 'groups', 'country', 'timezone', 'maxStale',
 		'bubble', 'position', 'delay', 'max', 'duration', 'gap', 'maxAge', 'css',
