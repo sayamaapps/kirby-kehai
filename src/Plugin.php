@@ -107,7 +107,7 @@ class Plugin
 		}
 		$key = Options::key(Options::secretsFile($kirby));
 		if ($key === null) {
-			Log::error('Kehai: kehai.pull is on, but site/config/' . Options::SECRETS . ' has no key');
+			Log::error('Kehai: ' . Options::setKey($kirby, 'pull') . ' is on, but site/config/' . Options::SECRETS . ' has no key');
 			return;
 		}
 		Pull::later($config, $key);

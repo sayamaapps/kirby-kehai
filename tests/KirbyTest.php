@@ -97,6 +97,9 @@ final class KirbyTest extends TestCase
 			holds(!str_contains($html, 'kehai'), 'bubble and summary off: nothing printed');
 			[$response] = $route(['kehai.active' => 'yes', 'kehai.bubble' => true, 'kehai.products' => $products]);
 			expect(404, $response->code(), 'only true switches on');
+			[$response, $json] = $route(['sayamaapps.kehai.active' => true, 'sayamaapps.kehai.bubble' => true, 'sayamaapps.kehai.products' => $products]);
+			expect(200, $response->code(), 'sayamaapps.kehai.active and .bubble switch the route on');
+			expect(3, count($json['events']), 'sayamaapps.kehai.products: the same events as the 1.x names');
 			holds($kirby([])->plugin('sayamaapps/kehai') !== null, 'plugin sayamaapps/kehai registered');
 			expect('Schließen', $kirby([])->translation('de')->get('kehai.close'), 'strings registered as Kirby translations');
 

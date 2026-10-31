@@ -40,14 +40,14 @@ class Check
 	 * @param list<string> $problems
 	 * @param list<string> $notes
 	 */
-	private static function checkConfiguration(array $config, bool $keyFile, array &$problems, array &$notes): void
+	private static function checkConfiguration(array $config, bool $keyFile, array &$problems, array &$notes, array $names): void
 	{
-		self::switchNotes($config['active'], $config['bubble'], $config['summary'], $config['pull'], $notes);
+		self::switchNotes($config['active'], $config['bubble'], $config['summary'], $config['pull'], $notes, $names);
 		if ($config['products'] === []) {
-			$problems[] = 'kehai.products is empty: no purchase is counted.';
+			$problems[] = Config::optionName('products', $names) . ' is empty: no purchase is counted.';
 		}
 		if ($config['pull'] && !$keyFile) {
-			$problems[] = 'kehai.pull is on, but site/config/' . Options::SECRETS . ' has no key.';
+			$problems[] = Config::optionName('pull', $names) . ' is on, but site/config/' . Options::SECRETS . ' has no key.';
 		}
 		if (!$config['pull'] && $keyFile) {
 			$notes[] = 'site/config/' . Options::SECRETS . ' holds a key although pull mode is off. With the workflow, the key does not belong on the web server.';
@@ -93,7 +93,7 @@ class Check
 	 * @param list<string> $notes
 	 * @return array{read: array, covered: int} The read result and the days the file covers
 	 */
-	private static function describeDataFile(Closure $say, array $config, DateTimeImmutable $now, array &$problems, array &$notes): array
+	private static function describeDataFile(Closure $say, array $config, DateTimeImmutable $now, array &$problems, array &$notes, array $names): array
 	{
 		$say('');
 		$say('Data file');
@@ -117,7 +117,7 @@ class Check
 		$say(count($read['events']) . ' events' . ($read['dropped'] > 0 ? ', ' . $read['dropped'] . ' invalid entries ignored' : ''), 1);
 		self::fileNotes($read, $config, $covered, $notes);
 		if ($age > $config['maxStale'] * 3600) {
-			$problems[] = 'The data file is older than kehai.maxStale (' . $config['maxStale'] . ' hours): nothing is shown until the next successful fetch.';
+			$problems[] = 'The data file is older than ' . Config::optionName('maxStale', $names) . ' (' . $config['maxStale'] . ' hours): nothing is shown until the next successful fetch.';
 		} elseif ($age < -Events::FUTURE_TOLERANCE) {
 			$problems[] = 'The data file claims to be generated in the future; check the clocks of the server and of the machine that runs the fetch.';
 		}
@@ -130,7 +130,7 @@ class Check
 	 * @param array{read: array, covered: int} $data
 	 * @param list<string> $notes
 	 */
-	private static function describeEvents(Closure $say, array $config, DateTimeImmutable $now, array $data, array &$notes): void
+	private static function describeEvents(Closure $say, array $config, DateTimeImmutable $now, array $data, array &$notes, array $names): void
 	{
 		$read = $data['read'];
 		/** @var list<array> $events */
@@ -149,7 +149,7 @@ class Check
 			$summary = array_sum(array_map(fn (string $key) => self::countWithin($events, $key, max(1, $summaryDays), $now, $limit), $group['products']));
 			$say("group $name: " . self::summaryLine($summary, $summaryDays, $config['summaryMin']), 1);
 		}
-		self::unknownNotes($events, $keys, $notes);
+		self::unknownNotes($events, $keys, $notes, $names);
 		if ($keys === []) {
 			$say('(no products configured)', 1);
 		}
@@ -219,17 +219,18 @@ class Check
 	 * @param list<string> $problems Config::normalize()['problems']
 	 * @param $keyFile whether site/config/kehai.php has a key
 	 * @param resource $out
+	 * @param array<string,string> $names Options::config()['names'], the option names as the site spelled them
 	 */
-	public static function run(array $config, array $problems, bool $keyFile, $out, DateTimeImmutable|null $now = null): int
+	public static function run(array $config, array $problems, bool $keyFile, $out, DateTimeImmutable|null $now = null, array $names = []): int
 	{
 		$now ??= new DateTimeImmutable('now');
 		$say = self::writer($out);
 		$notes = [];
 
 		self::describeConfiguration($say, $config, $keyFile);
-		self::checkConfiguration($config, $keyFile, $problems, $notes);
-		$data = self::describeDataFile($say, $config, $now, $problems, $notes);
-		self::describeEvents($say, $config, $now, $data, $notes);
+		self::checkConfiguration($config, $keyFile, $problems, $notes, $names);
+		$data = self::describeDataFile($say, $config, $now, $problems, $notes, $names);
+		self::describeEvents($say, $config, $now, $data, $notes, $names);
 		self::describeResult($say, $problems, $notes);
 		return $problems === [] ? self::EXIT_OK : self::EXIT_PROBLEM;
 	}
@@ -248,15 +249,15 @@ class Check
 	 *
 	 * @param list<string> $notes
 	 */
-	private static function switchNotes(bool $active, bool $bubble, bool $summary, bool $pull, array &$notes): void
+	private static function switchNotes(bool $active, bool $bubble, bool $summary, bool $pull, array &$notes, array $names): void
 	{
 		if (!$active) {
-			$notes[] = 'kehai.active is off: the site shows nothing and the route answers 404.';
+			$notes[] = Config::optionName('active', $names) . ' is off: the site shows nothing and the route answers 404.';
 		} elseif (!$bubble && !$summary) {
-			$notes[] = 'kehai.bubble and kehai.summary are both off: nothing is shown.';
+			$notes[] = Config::optionName('bubble', $names) . ' and ' . Config::optionName('summary', $names) . ' are both off: nothing is shown.';
 		}
 		if ($active && $pull && !$bubble) {
-			$notes[] = 'kehai.pull is on and kehai.bubble is off: only a page render on PHP-FPM or LiteSpeed '
+			$notes[] = Config::optionName('pull', $names) . ' is on and ' . Config::optionName('bubble', $names) . ' is off: only a page render on PHP-FPM or LiteSpeed '
 				. 'starts the fetch (the bubble\'s script would call the route elsewhere). On another server use the workflow.';
 		}
 	}
@@ -267,12 +268,12 @@ class Check
 	 * @param list<string> $keys
 	 * @param list<string> $notes
 	 */
-	private static function unknownNotes(array $events, array $keys, array &$notes): void
+	private static function unknownNotes(array $events, array $keys, array &$notes, array $names): void
 	{
 		$unknown = array_count_values(array_column(array_filter($events, fn (array $e) => !in_array($e['product'], $keys, true)), 'product'));
 		ksort($unknown);
 		foreach ($unknown as $key => $count) {
-			$notes[] = "$count events for the product key \"$key\", which is not in kehai.products, are ignored.";
+			$notes[] = "$count events for the product key \"$key\", which is not in " . Config::optionName('products', $names) . ', are ignored.';
 		}
 	}
 

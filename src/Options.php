@@ -7,11 +7,19 @@ use Kirby\Cms\App;
 use WeakMap;
 
 /**
- * Reads `kehai.*` options from Kirby and hands them to Config.
+ * Reads Kehai's options: `sayamaapps.kehai.<key>`, falling back to the 1.x
+ * name `kehai.<key>`, which is read silently. Hands them to Config.
  *
- * `null` counts as "not set", like Kirby's own option(). Flat keys
- * (`'kehai.active' => true`) and nested ones (`'kehai' => ['active' => true]`)
- * are both read by Kirby's option().
+ * The flat form (`'sayamaapps.kehai.active' => true`) is the one to use. The
+ * nested form (`'kehai' => ['active' => true]`) works for the 1.x prefix only:
+ * Kirby resolves `sayamaapps.kehai.*` through the plugin's own options block
+ * first, which shadows a nested `sayamaapps` array.
+ *
+ * Defaults are given here and at the call sites. The `options` block of the
+ * plugin (config/options.php) lists the keys with null: a default there would
+ * hide the 1.x spelling.
+ *
+ * `null` counts as "not set", like Kirby's own option().
  *
  * @package   Kirby Kehai
  * @author    Simon Räder
@@ -21,7 +29,14 @@ use WeakMap;
  */
 class Options
 {
-	/** Option prefix. */
+	/** Option prefix since 1.3. */
+	public const OPTION_PREFIX = 'sayamaapps.kehai.';
+
+	/**
+	 * Option prefix of 1.x (`kehai.<key>`). Still read as a fallback until 2.0.
+	 *
+	 * @deprecated 1.3 use OPTION_PREFIX; removal planned for 2.0
+	 */
 	public const PREFIX = 'kehai.';
 
 	/** The file with the API key for pull mode, in Kirby's config root. Keep it out of git. */
@@ -38,7 +53,7 @@ class Options
 	 * logged once (Log), so a typo in the config shows up in the error log
 	 * without filling it.
 	 *
-	 * @return array{config: array<string,mixed>, problems: list<string>}
+	 * @return array{config: array<string,mixed>, problems: list<string>, names: array<string,string>}
 	 */
 	public static function config(App $kirby): array
 	{
@@ -48,11 +63,13 @@ class Options
 			return $cache[$kirby];
 		}
 		$raw = [];
+		$names = [];
 		foreach (Config::KEYS as $key) {
 			$value = self::get($kirby, $key);
 			$raw[$key] = $key === 'file' && $value instanceof Closure ? $value() : $value;
+			$names[$key] = self::setKey($kirby, $key);
 		}
-		$result = Config::normalize($raw, self::base($kirby));
+		$result = Config::normalize($raw, self::base($kirby), $names) + ['names' => $names];
 		if ($result['config']['active']) {
 			foreach ($result['problems'] as $problem) {
 				Log::error('Kehai: ' . $problem);
@@ -61,9 +78,18 @@ class Options
 		return $cache[$kirby] = $result;
 	}
 
-	/** `kehai.<key>`, or the default when it is not set. */
+	/**
+	 * Reads an option under the sayamaapps.kehai.* spelling, then under the
+	 * 1.x kehai.* spelling, which is read silently. Returns $default when
+	 * neither is set.
+	 */
 	public static function get(App $kirby, string $key, mixed $default = null): mixed
 	{
+		$value = $kirby->option(self::OPTION_PREFIX . $key);
+		if ($value !== null) {
+			return $value;
+		}
+
 		return $kirby->option(self::PREFIX . $key) ?? $default;
 	}
 
@@ -83,7 +109,7 @@ class Options
 	}
 
 	/**
-	 * Language of the visitor-facing text: `kehai.language`, otherwise the
+	 * Language of the visitor-facing text: `sayamaapps.kehai.language` (or `kehai.language`), otherwise the
 	 * language of the current request (multi-language sites), the default
 	 * language, the first two letters of Kirby's `locale` option, English.
 	 */
@@ -113,5 +139,17 @@ class Options
 	public static function secretsFile(App $kirby): string
 	{
 		return $kirby->root('config') . '/' . self::SECRETS;
+	}
+
+	/**
+	 * The option name as the site spelled it, for messages: the 1.x kehai.<key>
+	 * name only when the site sets no sayamaapps.kehai.<key> value for it.
+	 */
+	public static function setKey(App $kirby, string $key): string
+	{
+		if ($kirby->option(self::OPTION_PREFIX . $key) === null && $kirby->option(self::PREFIX . $key) !== null) {
+			return self::PREFIX . $key;
+		}
+		return self::OPTION_PREFIX . $key;
 	}
 }

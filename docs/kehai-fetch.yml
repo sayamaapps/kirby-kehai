@@ -10,7 +10,7 @@
 #   KEHAI_FTP_USER                                                          ←
 #   KEHAI_FTP_PASSWORD                                                      ←
 #
-# The site's configuration (kehai.products and the rest) is read from
+# The site's configuration (sayamaapps.kehai.products and the rest) is read from
 # site/config/config.php of the checkout, so the workflow needs no list of
 # products of its own.
 
@@ -28,7 +28,7 @@ concurrency: kehai-fetch
 
 env:
   KEHAI_FILE: build/kehai/events.json             # on the runner only, never committed
-  KEHAI_REMOTE_DIR: /htdocs/example/storage/kehai # ← project root on the server + storage/kehai (kehai.file)
+  KEHAI_REMOTE_DIR: /htdocs/example/storage/kehai # ← project root on the server + storage/kehai (sayamaapps.kehai.file)
 
 jobs:
   fetch:
@@ -60,7 +60,7 @@ jobs:
             echo "upload=no" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # 1 = error: the file on the server stays as it is. After kehai.maxStale
+          # 1 = error: the file on the server stays as it is. After sayamaapps.kehai.maxStale
           # hours (48) without a successful run the site shows nothing by itself.
           [ "$status" = "0" ] || exit "$status"
           echo "upload=yes" >> "$GITHUB_OUTPUT"

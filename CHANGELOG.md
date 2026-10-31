@@ -18,6 +18,13 @@ All notable changes to this project are documented here. Versions follow
   **[privacy text]**. Every site using the plugin must then review its privacy
   policy.
 
+## [1.3.0] — 2026-10-31
+
+### Changed
+
+- Options are read as `sayamaapps.kehai.<name>`. The 1.x names `kehai.<name>` keep working and are read without a warning. If both are set, the new one wins.
+- `Options::OPTION_PREFIX` is new. `Options::PREFIX` keeps its 1.x value.
+
 ## [1.2.0] — 2026-10-27
 
 Code layout and tooling only. Nothing a site sees, stores or has to change; every 1.x name keeps working.
