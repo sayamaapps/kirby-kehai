@@ -3,6 +3,7 @@
 use Kirby\Cms\App;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Sayamaapps\Kehai\Check;
 use Sayamaapps\Kehai\Config;
 use Sayamaapps\Kehai\Options;
 
@@ -15,6 +16,16 @@ use Sayamaapps\Kehai\Options;
 #[CoversClass(Options::class)]
 final class OptionsPrefixTest extends TestCase
 {
+	public function testCheckNamesTheSpellingTheSiteUsed(): void
+	{
+		$now = new DateTimeImmutable('2026-10-13T10:00:00Z');
+		$this->withApp(['sayamaapps.kehai.active' => true], function (App $kirby) use ($now): void {
+			$checked = Options::config($kirby);
+			[, $out] = captured(fn ($out) => Check::run($checked['config'], $checked['problems'], false, $out, $now, $checked['names']));
+			$this->assertStringContainsString('sayamaapps.kehai.products is empty', $out, 'Check names the new spelling');
+		});
+	}
+
 	public function testFetchSettingsReadInEitherSpelling(): void
 	{
 		$products = ['111111' => ['key' => 'jahreskurs', 'label' => 'Annual course']];
@@ -28,6 +39,30 @@ final class OptionsPrefixTest extends TestCase
 			$this->assertSame(['jahreskurs'], Config::keys($config), 'products from sayamaapps.kehai.products');
 			$this->assertStringEndsWith('/storage/kehai/new.json', $config['file'], 'file from sayamaapps.kehai.file, relative to the project root');
 			$this->assertSame(7, $config['maxAge'], 'maxAge from the 1.x kehai.maxAge');
+		});
+	}
+
+	public function testProblemsNameTheSpellingTheSiteUsed(): void
+	{
+		$bad = ['x' => ['key' => 'Bad Key']];
+		$this->withApp(['sayamaapps.kehai.products' => $bad], function (App $kirby): void {
+			$this->assertContains('sayamaapps.kehai.products: ignoring product x (key missing or not a-z, 0-9, - and _)', Options::config($kirby)['problems'], 'new spelling in the message');
+		});
+		$this->withApp(['kehai.products' => $bad], function (App $kirby): void {
+			$this->assertContains('kehai.products: ignoring product x (key missing or not a-z, 0-9, - and _)', Options::config($kirby)['problems'], '1.x spelling in the message');
+		});
+	}
+
+	public function testSetKeyNamesTheSpellingTheSiteUsed(): void
+	{
+		$this->withApp([], function (App $kirby): void {
+			$this->assertSame('sayamaapps.kehai.max', Options::setKey($kirby, 'max'), 'nothing set: the new name');
+		});
+		$this->withApp(['kehai.max' => 3], function (App $kirby): void {
+			$this->assertSame('kehai.max', Options::setKey($kirby, 'max'), 'only the 1.x name set: the 1.x name');
+		});
+		$this->withApp(['kehai.max' => 3, 'sayamaapps.kehai.max' => 5], function (App $kirby): void {
+			$this->assertSame('sayamaapps.kehai.max', Options::setKey($kirby, 'max'), 'both set: the new name');
 		});
 	}
 

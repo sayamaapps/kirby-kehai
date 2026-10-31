@@ -53,7 +53,7 @@ class Options
 	 * logged once (Log), so a typo in the config shows up in the error log
 	 * without filling it.
 	 *
-	 * @return array{config: array<string,mixed>, problems: list<string>}
+	 * @return array{config: array<string,mixed>, problems: list<string>, names: array<string,string>}
 	 */
 	public static function config(App $kirby): array
 	{
@@ -63,11 +63,13 @@ class Options
 			return $cache[$kirby];
 		}
 		$raw = [];
+		$names = [];
 		foreach (Config::KEYS as $key) {
 			$value = self::get($kirby, $key);
 			$raw[$key] = $key === 'file' && $value instanceof Closure ? $value() : $value;
+			$names[$key] = self::setKey($kirby, $key);
 		}
-		$result = Config::normalize($raw, self::base($kirby));
+		$result = Config::normalize($raw, self::base($kirby), $names) + ['names' => $names];
 		if ($result['config']['active']) {
 			foreach ($result['problems'] as $problem) {
 				Log::error('Kehai: ' . $problem);
@@ -137,5 +139,17 @@ class Options
 	public static function secretsFile(App $kirby): string
 	{
 		return $kirby->root('config') . '/' . self::SECRETS;
+	}
+
+	/**
+	 * The option name as the site spelled it, for messages: the 1.x kehai.<key>
+	 * name only when the site sets no sayamaapps.kehai.<key> value for it.
+	 */
+	public static function setKey(App $kirby, string $key): string
+	{
+		if ($kirby->option(self::OPTION_PREFIX . $key) === null && $kirby->option(self::PREFIX . $key) !== null) {
+			return self::PREFIX . $key;
+		}
+		return self::OPTION_PREFIX . $key;
 	}
 }

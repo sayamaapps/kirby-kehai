@@ -90,11 +90,11 @@ class Cli
 			fwrite($err, Text::plain($kirby, 300) . "\n");
 			return self::EXIT_USAGE;
 		}
-		['config' => $config, 'problems' => $problems] = Options::config($kirby);
+		['config' => $config, 'problems' => $problems, 'names' => $names] = Options::config($kirby);
 		$key = Options::key(Options::secretsFile($kirby));
 
 		if ($command === 'check') {
-			return Check::run($config, $problems, $key !== null, $out);
+			return Check::run($config, $problems, $key !== null, $out, null, $names);
 		}
 		return self::fetch($env, $args, $config, $problems, $key, $cwd, $out, $err);
 	}

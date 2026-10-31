@@ -76,10 +76,11 @@ class Config
 	 *
 	 * @return array{0: array<string, array{products:list<string>, label:array<string,string>}>, 1: list<string>}
 	 */
-	private static function groups(mixed $raw, array $products): array
+	private static function groups(mixed $raw, array $products, array $names): array
 	{
+		$option = self::optionName('groups', $names);
 		if (!is_array($raw)) {
-			return [[], ['kehai.groups must be an array of name => [products, label]']];
+			return [[], [$option . ' must be an array of name => [products, label]']];
 		}
 		$known = array_column($products, 'key');
 		$groups = [];
@@ -88,14 +89,14 @@ class Config
 			$name = (string)$name;
 			$shown = Text::plain($name, 40);
 			if (!preg_match(self::KEY_PATTERN, $name) || !is_array($entry) || !is_array($entry['products'] ?? null)) {
-				$problems[] = "kehai.groups: ignoring \"$shown\" (needs a name of a-z, 0-9, - and _ and a list of products)";
+				$problems[] = "$option: ignoring \"$shown\" (needs a name of a-z, 0-9, - and _ and a list of products)";
 				continue;
 			}
 			if (in_array($name, $known, true)) {
-				$problems[] = "kehai.groups: ignoring \"$shown\" (a product has the same key)";
+				$problems[] = "$option: ignoring \"$shown\" (a product has the same key)";
 				continue;
 			}
-			$members = self::members($entry['products'], $known, $shown, $problems);
+			$members = self::members($entry['products'], $known, $shown, $problems, $option);
 			$groups[$name] = ['products' => array_values(array_unique($members)), 'label' => self::labels($entry['label'] ?? null, $name)];
 		}
 		return [$groups, $problems];
@@ -142,14 +143,14 @@ class Config
 	 * @param list<string> $problems
 	 * @return list<string>
 	 */
-	private static function members(array $keys, array $known, string $shown, array &$problems): array
+	private static function members(array $keys, array $known, string $shown, array &$problems, string $option): array
 	{
 		$members = [];
 		foreach ($keys as $key) {
 			if (is_string($key) && in_array($key, $known, true)) {
 				$members[] = $key;
 			} else {
-				$problems[] = "kehai.groups.$shown: ignoring the unknown product key \"" . Text::plain(is_scalar($key) ? (string)$key : gettype($key), 40) . '"';
+				$problems[] = "$option.$shown: ignoring the unknown product key \"" . Text::plain(is_scalar($key) ? (string)$key : gettype($key), 40) . '"';
 			}
 		}
 		return $members;
@@ -159,28 +160,28 @@ class Config
 	 * @param array<string,mixed> $raw option name => value (null = not set)
 	 * @param $base project root, for a relative `file`
 	 */
-	public static function normalize(array $raw, string $base): array
+	public static function normalize(array $raw, string $base, array $names = []): array
 	{
 		/** @var list<string> $problems */
 		$problems = [];
-		$int = function (string $name, int $default, int $min, int $max) use ($raw, &$problems): int {
+		$int = function (string $name, int $default, int $min, int $max) use ($raw, &$problems, $names): int {
 			$value = $raw[$name] ?? null;
 			if ($value === null) {
 				return $default;
 			}
 			if (!is_int($value) && !(is_string($value) && preg_match('/^\d+\z/', $value))) {
-				$problems[] = "kehai.$name is not a whole number; using $default";
+				$problems[] = self::optionName($name, $names) . " is not a whole number; using $default";
 				return $default;
 			}
 			return max($min, min($max, (int)$value));
 		};
 
-		$source = self::source($raw, $problems);
-		$timezone = self::timezone($raw, $problems);
-		$position = self::position($raw, $problems);
+		$source = self::source($raw, $problems, $names);
+		$timezone = self::timezone($raw, $problems, $names);
+		$position = self::position($raw, $problems, $names);
 
-		[$products, $productProblems] = self::products($raw['products'] ?? []);
-		[$groups, $groupProblems] = self::groups($raw['groups'] ?? [], $products);
+		[$products, $productProblems] = self::products($raw['products'] ?? [], $names);
+		[$groups, $groupProblems] = self::groups($raw['groups'] ?? [], $products, $names);
 		array_push($problems, ...$productProblems, ...$groupProblems);
 
 		$config = [
@@ -211,12 +212,23 @@ class Config
 		return ['config' => $config, 'problems' => $problems];
 	}
 
+	/**
+	 * The option name for a message: the name the site spelled (`$names`, from
+	 * Options::setKey()), otherwise the 1.x name.
+	 *
+	 * @param array<string,string> $names
+	 */
+	public static function optionName(string $key, array $names = []): string
+	{
+		return $names[$key] ?? 'kehai.' . $key;
+	}
+
 	/** `position`: left or right; anything else is reported and replaced by left. */
-	private static function position(array $raw, array &$problems): string
+	private static function position(array $raw, array &$problems, array $names): string
 	{
 		$position = $raw['position'] ?? 'left';
 		if (!in_array($position, ['left', 'right'], true)) {
-			$problems[] = 'kehai.position must be left or right; using left';
+			$problems[] = self::optionName('position', $names) . ' must be left or right; using left';
 			return 'left';
 		}
 		return $position;
@@ -229,10 +241,11 @@ class Config
 	 *
 	 * @return array{0: array<string, array{key:string, label:array<string,string>}>, 1: list<string>}
 	 */
-	private static function products(mixed $raw): array
+	private static function products(mixed $raw, array $names): array
 	{
+		$option = self::optionName('products', $names);
 		if (!is_array($raw)) {
-			return [[], ['kehai.products must be an array of product id => [key, label]']];
+			return [[], [$option . ' must be an array of product id => [key, label]']];
 		}
 		$products = [];
 		$problems = [];
@@ -240,12 +253,12 @@ class Config
 			$id = (string)$id;
 			$shown = Text::plain($id, 40);
 			if (!preg_match(self::ID_PATTERN, $id)) {
-				$problems[] = "kehai.products: ignoring the entry \"$shown\" (not a product id)";
+				$problems[] = "$option: ignoring the entry \"$shown\" (not a product id)";
 				continue;
 			}
 			$key = is_array($entry) ? ($entry['key'] ?? null) : null;
 			if (!is_string($key) || !preg_match(self::KEY_PATTERN, $key)) {
-				$problems[] = "kehai.products: ignoring product $shown (key missing or not a-z, 0-9, - and _)";
+				$problems[] = "$option: ignoring product $shown (key missing or not a-z, 0-9, - and _)";
 				continue;
 			}
 			$products[$id] = ['key' => $key, 'label' => self::labels($entry['label'] ?? null, $key)];
@@ -261,18 +274,18 @@ class Config
 	}
 
 	/** `source`: digistore24 is the only one; anything else is reported and replaced. */
-	private static function source(array $raw, array &$problems): string
+	private static function source(array $raw, array &$problems, array $names): string
 	{
 		$source = $raw['source'] ?? 'digistore24';
 		if (!in_array($source, self::SOURCES, true)) {
-			$problems[] = 'kehai.source ' . Text::plain(var_export($source, true), 40) . ' is not supported; using digistore24';
+			$problems[] = self::optionName('source', $names) . ' ' . Text::plain(var_export($source, true), 40) . ' is not supported; using digistore24';
 			return 'digistore24';
 		}
 		return $source;
 	}
 
 	/** `timezone`: a time zone name, or Europe/Berlin with a note. */
-	private static function timezone(array $raw, array &$problems): string
+	private static function timezone(array $raw, array &$problems, array $names): string
 	{
 		$timezone = $raw['timezone'] ?? 'Europe/Berlin';
 		try {
@@ -280,7 +293,7 @@ class Config
 			$name = is_string($timezone) ? $timezone : '';
 			return (new DateTimeZone($name))->getName();
 		} catch (\Throwable) {
-			$problems[] = 'kehai.timezone is not a valid time zone; using Europe/Berlin';
+			$problems[] = self::optionName('timezone', $names) . ' is not a valid time zone; using Europe/Berlin';
 			return 'Europe/Berlin';
 		}
 	}
