@@ -13,12 +13,10 @@ Honest social proof for [Kirby CMS](https://getkirby.com): real, recent Digistor
 
 ## Requirements
 
-- Kirby 5
+- Kirby 5 or 6; Kirby 6 needs PHP 8.3 or newer
 - PHP 8.2 to 8.5 with `mbstring`; `curl` recommended (streams are used without it)
 - A Digistore24 account with an API key (read access)
 - An hourly job for `kehai fetch`: a GitHub Actions runner or cron, or [pull mode](#pull-mode)
-
-Kirby 6 is tested in CI as a pre-release only; it is not declared as supported yet.
 
 ## Installation
 
